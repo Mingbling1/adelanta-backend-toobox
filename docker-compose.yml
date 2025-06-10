@@ -1,6 +1,6 @@
 services:
     web:
-        image: mingbling/fastapiwithnginx:latest
+        image: ${ECR_REPOSITORY_URI}/fastapi-app:latest
         container_name: web
         ports:
             - "8000:8000"
@@ -57,7 +57,7 @@ services:
                 max-size: "100k"
 
     worker:
-        image: mingbling/fastapiwithnginx:latest
+        image: ${ECR_REPOSITORY_URI}/fastapi-app:latest
         container_name: rq_worker
         command: rq worker --name worker@%h --with-scheduler emails
         restart: unless-stopped
