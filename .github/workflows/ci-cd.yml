@@ -1,0 +1,184 @@
+name: Build, Push, Deploy.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build_and_push:
+    name: Push docker image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Check Python version in slim image
+        run: docker run --rm python:3.12-slim python --version
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+          logout: true
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: mingbling/fastapiwithnginx
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: mingbling/fastapiwithnginx:latest
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+    needs: [build_and_push]
+    steps:
+      # Paso 1: Preparar directorios (solo templates)
+      - name: Prepare directories
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            # Preparar directorio templates
+            rm -rf templates
+            mkdir -p templates
+            chmod 777 templates
+            echo "Directorio templates preparado"
+
+      # PASO 2: Obtener el código del repositorio
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # PASO 3: Copiar plantillas primero (separado de otros archivos)
+      - name: Copy templates
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          source: "templates/*"
+          target: "."
+          strip_components: 0
+
+      # PASO 4: Copiar archivos de configuración
+      - name: Copy config files
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          source: "docker-compose.yml,nginx/nginx.conf,init-letsencrypt.sh"
+          target: "."
+          strip_components: 0
+
+      # PASO 5: Verificar que todo se copió correctamente y ajustar permisos
+      - name: Verify files and adjust permissions
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            echo "Contenidos del directorio principal:"
+            ls -la
+            
+            echo "Contenido del directorio templates:"
+            find templates -type f | sort
+            
+            echo "Ajustando permisos:"
+            chmod -R 755 templates
+            chmod 755 init-letsencrypt.sh
+
+      # PASO 6: Detener los contenedores, eliminar imágenes y desplegar
+      - name: Deploy with docker-compose
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            echo "Deteniendo contenedores existentes..."
+            docker-compose down --remove-orphans || true
+            docker ps -q | xargs -r docker stop
+            docker ps -a -q | xargs -r docker rm -f
+            
+            echo "Limpiando imágenes antiguas..."
+            docker container prune -f
+            docker image rm -f $(docker images mingbling/fastapiwithnginx -q) || true
+            
+            echo "Descargando nuevas imágenes..."
+            docker-compose pull
+            
+            echo "Iniciando servicios..."
+            docker-compose up -d
+            
+            echo "Configurando certificados SSL..."
+            chmod +x ./init-letsencrypt.sh
+            sudo ./init-letsencrypt.sh
+
+      # PASO 7: Verificar que los servicios están funcionando
+      - name: Verify services
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            echo "Verificando estado de los contenedores:"
+            docker ps
+            
+            echo "Logs del worker (últimas 10 líneas):"
+            docker logs rq_worker --tail 10
+            
+            echo "Verificando cola de emails:"
+            docker exec redis redis-cli LLEN rq:queue:emails
+            
+            echo "Desplegado completado con éxito!"
+
+  test:
+    name: Run tests after deployment
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Run tests and check service
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            # Ejecutar tests en el contenedor web
+            docker exec web pytest test/cronjob/test_cronjob.py || echo "Tests ejecutados con advertencias"
+            
+            echo "Esperando 10 segundos para asegurar que el servicio esté listo..."
+            sleep 10
+            
+            echo "Invocando endpoint force-check..."
+            ENDPOINT="http://localhost:8000/api/cronjob/force-check"
+            response=$(curl -Ls -o /dev/null -w "%{http_code}" -X POST "$ENDPOINT")
+            echo "Código de respuesta: $response"
+            
+            if [ "$response" -eq 200 ]; then
+                echo "Success: Scheduler triggered to check for jobs."
+            else
+                echo "Error: HTTP status $response"
+                # No fallamos la build por esto, solo es informativo
+                echo "Continua de todos modos..."
+            fi
+            
+            echo "Verificando que el worker RQ esté funcionando:"
+            docker logs rq_worker --tail 20

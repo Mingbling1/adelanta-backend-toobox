@@ -1,0 +1,213 @@
+,RUC (Cliente),RUC (Pagador),Tipo,Fecha vencimiento nuevo,Ejecutivo,Tipo Operación
+4,20600019989,20100113610,Operación nueva,2024-01-02 00:00:00,"Cristian, Stanbury",Factoring
+6,20603691092,20100073723,Operación nueva,2024-01-10 00:00:00,"Cristian, Stanbury",Factoring
+7,20603182791,20550372640,Operación nueva,2024-01-31 00:00:00,"Cristian, Stanbury",Factoring
+8,20601378567,20563529378,Operación nueva,2024-01-31 00:00:00,"Cristian, Stanbury",Factoring
+13,20600653262,20519219922,Operación nueva,2024-01-17 00:00:00,"Cristian, Stanbury",Factoring
+14,20518726146,20509149179,Operación nueva,2024-01-19 00:00:00,"Cristian, Stanbury",Factoring
+15,20605490671,20607908754,Operación nueva,2024-01-18 00:00:00,"Cristian, Stanbury",Factoring
+16,20547197527,20418664542,Operación nueva,2024-01-16 00:00:00,"Cristian, Stanbury",Factoring
+17,0,20538282996,Operación nueva,2024-01-17 00:00:00,"Cristian, Stanbury",Confirming
+29,20604443700,20548187266,Operación nueva,2024-01-18 00:00:00,"Miguel , Del Solar",Factoring
+31,10416350669,20543011976,Operación nueva,2024-01-18 00:00:00,"Miguel , Del Solar",Factoring
+32,10416350669,20343443961,Operación nueva,2024-01-20 00:00:00,"Miguel , Del Solar",Factoring
+34,20512258647,20600058119,Operación nueva,2024-01-31 00:00:00,"Miguel , Del Solar",Factoring
+36,20601209137,20610049886,Operación nueva,2024-01-19 00:00:00,"Miguel , Del Solar",Factoring
+39,20607601802,20516259516,Operación nueva,2024-01-09 00:00:00,"Miguel , Del Solar",Factoring
+40,20512258647,20131312955,Operación nueva,2024-01-30 00:00:00,"Miguel , Del Solar",Factoring
+41,20517690237,20521233991,Operación nueva,2024-01-10 00:00:00,"Leonardo, Castillo",Factoring
+49,20509734331,20521233991,Operación nueva,2024-01-19 00:00:00,"Leonardo, Castillo",Factoring
+50,20136492277,20100366151,Operación nueva,2024-01-27 00:00:00,"Leonardo, Castillo",Factoring
+60,20601751438,20357259976,Operación nueva,2024-01-23 00:00:00,"Martin, Huaccharaqui",Factoring
+61,20601896533,20511414408,Operación nueva,2024-01-04 00:00:00,"Martin, Huaccharaqui",Factoring
+65,20543251691,20433469039,Operación nueva,2024-01-19 00:00:00,"Martin, Huaccharaqui",Factoring
+70,20600653262,20519219922,Operación nueva,2024-01-17 00:00:00,"Martin, Huaccharaqui",Factoring
+74,20601896533,20510885229,Operación nueva,2024-01-12 00:00:00,"Martin, Huaccharaqui",Factoring
+78,20552778422,20147960612,Operación nueva,2024-01-26 00:00:00,"Guadalupe, Campos",Factoring
+80,20556288586,20413940568,Operación nueva,2024-01-27 00:00:00,"Guadalupe, Campos",Factoring
+82,20553658226,20512691529,Operación nueva,2024-01-13 00:00:00,"Guadalupe, Campos",Factoring
+88,20601415578,20607121878,Operación nueva,2024-01-12 00:00:00,"Guadalupe, Campos",Factoring
+92,0,20530184596,Operación nueva,2024-01-13 00:00:00,"Marcos, Vargas",Confirming
+118,0,20508596732,Operación nueva,2024-02-17 00:00:00,"Cristian, Stanbury",Confirming
+122,20522489493,20600654871,Operación nueva,2024-02-03 00:00:00,"Miguel , Del Solar",Factoring
+129,20512258647,20100210909,Operación nueva,2024-02-16 00:00:00,"Miguel , Del Solar",Factoring
+145,20553658226,20343443961,Operación nueva,2024-02-14 00:00:00,"Guadalupe, Campos",Factoring
+151,20603087721,20418664542,Operación nueva,2024-02-13 00:00:00,"Guadalupe, Campos",Factoring
+154,20517690237,20117779379,Operación nueva,2024-02-03 00:00:00,"Leonardo, Castillo",Factoring
+155,20610006991,20548187266,Operación nueva,2024-02-28 00:00:00,"Leonardo, Castillo",Factoring
+166,0,20551503462,Operación nueva,2024-02-13 00:00:00,"Leonardo, Castillo",Confirming
+167,20509622885,20548187266,Operación nueva,2024-02-03 00:00:00,"Martin, Huaccharaqui",Factoring
+171,20609308185,20610049886,Operación nueva,2024-02-23 00:00:00,"Martin, Huaccharaqui",Factoring
+172,15606258698,20100154308,Operación nueva,2024-02-03 00:00:00,"Martin, Huaccharaqui",Factoring
+173,20602375782,20100654611,Operación nueva,2024-02-03 00:00:00,"Martin, Huaccharaqui",Factoring
+174,20602317227,20546292658,Operación nueva,2024-02-14 00:00:00,"Martin, Huaccharaqui",Factoring
+185,20602317227,20423772442,Operación nueva,2024-02-14 00:00:00,"Martin, Huaccharaqui",Factoring
+186,10416350669,20602629067,Operación nueva,2024-03-24 00:00:00,"Miguel , Del Solar",Factoring
+190,10093436267,20100054184,Operación nueva,2024-03-15 00:00:00,"Miguel , Del Solar",Factoring
+195,20512258647,20204621242,Operación nueva,2024-03-14 00:00:00,"Miguel , Del Solar",Factoring
+196,20557668781,20100132592,Operación nueva,2024-03-23 00:00:00,"Miguel , Del Solar",Factoring
+197,20557668781,20555903546,Operación nueva,2024-03-23 00:00:00,"Miguel , Del Solar",Factoring
+201,20557668781,20518791983,Operación nueva,2024-03-23 00:00:00,"Miguel , Del Solar",Factoring
+204,20557668781,20508565934,Operación nueva,2024-03-23 00:00:00,"Miguel , Del Solar",Factoring
+208,20510997370,20387004301,Operación nueva,2024-03-09 00:00:00,"Cristian, Stanbury",Factoring
+212,20458923443,20518726146,Operación nueva,2024-03-23 00:00:00,"Cristian, Stanbury",Factoring
+216,20518726146,20509551767,Operación nueva,2024-03-23 00:00:00,"Cristian, Stanbury",Factoring
+219,20518726146,20261677955,Operación nueva,2024-03-28 00:00:00,"Cristian, Stanbury",Factoring
+220,20418664542,20209133394,Operación nueva,2024-03-17 00:00:00,"Cristian, Stanbury",Factoring
+221,20508596732,20101363008,Operación nueva,2024-03-31 00:00:00,"Cristian, Stanbury",Factoring
+222,20603106637,20543011976,Operación nueva,2024-03-22 00:00:00,"Cristian, Stanbury",Factoring
+226,0,20100369509,Operación nueva,2024-03-21 00:00:00,"Cristian, Stanbury",Confirming
+232,10422099498,20100052050,Operación nueva,2024-03-02 00:00:00,"Guadalupe, Campos",Factoring
+236,20516185211,20516020301,Operación nueva,2024-03-21 00:00:00,"Guadalupe, Campos",Factoring
+242,0,20344506842,Operación nueva,2024-03-02 00:00:00,"Guadalupe, Campos",Confirming
+250,20548187266,20100136580,Operación nueva,2024-03-03 00:00:00,"Leonardo, Castillo",Factoring
+252,20602950990,20474868312,Operación nueva,2024-03-16 00:00:00,"Leonardo, Castillo",Factoring
+253,20602977171,20538282996,Operación nueva,2024-03-23 00:00:00,"Leonardo, Castillo",Factoring
+257,20377832699,20100654611,Operación nueva,2024-03-30 00:00:00,"Leonardo, Castillo",Factoring
+264,20602909817,20482744983,Operación nueva,2024-03-09 00:00:00,"Martin, Huaccharaqui",Factoring
+266,20486238241,20538810682,Operación nueva,2024-03-17 00:00:00,"Martin, Huaccharaqui",Factoring
+270,20479813877,20550858461,Operación nueva,2024-03-27 00:00:00,"Martin, Huaccharaqui",Factoring
+281,20606270942,20610049886,Operación nueva,2024-04-04 00:00:00,"Cristian, Stanbury",Factoring
+284,10703410338,20100054184,Operación nueva,2024-04-04 00:00:00,"Cristian, Stanbury",Factoring
+290,20602977171,20100082391,Operación nueva,2024-04-12 00:00:00,"Leonardo, Castillo",Factoring
+291,20508704217,20268784625,Operación nueva,2024-04-28 00:00:00,"Leonardo, Castillo",Factoring
+292,20522309771,20518791983,Operación nueva,2024-04-05 00:00:00,"Leonardo, Castillo",Factoring
+294,20482744983,20383045267,Operación nueva,2024-04-19 00:00:00,"Leonardo, Castillo",Factoring
+295,20482744983,20608465899,Operación nueva,2024-04-14 00:00:00,"Leonardo, Castillo",Factoring
+297,20516596946,20268784625,Operación nueva,2024-04-28 00:00:00,"Leonardo, Castillo",Factoring
+300,20482744983,20557987020,Operación nueva,2024-04-20 00:00:00,"Leonardo, Castillo",Factoring
+301,20608829726,20604256161,Operación nueva,2024-04-18 00:00:00,"Leonardo, Castillo",Factoring
+302,20610343423,20607671061,Operación nueva,2024-04-04 00:00:00,"Leonardo, Castillo",Factoring
+316,20512258647,20215276024,Operación nueva,2024-04-26 00:00:00,"Miguel , Del Solar",Factoring
+318,20545665817,20384891943,Operación nueva,2024-04-27 00:00:00,"Miguel , Del Solar",Factoring
+326,20603277636,20481577005,Operación nueva,2024-04-13 00:00:00,"Guadalupe, Campos",Factoring
+328,20609210088,20606862556,Operación nueva,2024-04-25 00:00:00,"Guadalupe, Campos",Factoring
+330,20601145856,20100318696,Operación nueva,2024-04-26 00:00:00,"Guadalupe, Campos",Factoring
+332,20603277636,20600569130,Operación nueva,2024-04-14 00:00:00,"Guadalupe, Campos",Factoring
+334,20516185211,20251357413,Operación nueva,2024-04-14 00:00:00,"Guadalupe, Campos",Factoring
+340,20603736444,20552714378,Operación nueva,2024-04-05 00:00:00,"Guadalupe, Campos",Factoring
+342,20553373736,20108730294,Operación nueva,2024-04-18 00:00:00,"Guadalupe, Campos",Factoring
+345,20602143016,20610049886,Operación nueva,2024-04-17 00:00:00,"Guadalupe, Campos",Factoring
+346,20603277636,20600575954,Operación nueva,2024-04-13 00:00:00,"Guadalupe, Campos",Factoring
+349,20267178331,20293331066,Operación nueva,2024-04-26 00:00:00,"Martin, Huaccharaqui",Factoring
+350,20267178331,20602037933,Operación nueva,2024-04-26 00:00:00,"Martin, Huaccharaqui",Factoring
+353,20267178331,20563381958,Operación nueva,2024-04-27 00:00:00,"Martin, Huaccharaqui",Factoring
+365,20604206490,20537698889,Operación nueva,2024-04-14 00:00:00,"Martin, Huaccharaqui",Factoring
+370,20521948061,20486213681,Operación nueva,2024-04-20 00:00:00,"Reynaldo, Santiago",Factoring
+373,20603426780,20503801575,Operación nueva,2024-04-28 00:00:00,"Reynaldo, Santiago",Factoring
+375,20602504116,20608945297,Operación nueva,2024-05-26 00:00:00,"Miguel , Del Solar",Factoring
+377,20605385134,20297543653,Operación nueva,2024-05-24 00:00:00,"Miguel , Del Solar",Factoring
+381,20601702038,20606458585,Operación nueva,2024-05-08 00:00:00,"Miguel , Del Solar",Factoring
+383,20604411166,20100163471,Operación nueva,2024-05-17 00:00:00,"Miguel , Del Solar",Factoring
+385,20551198058,20603022450,Operación nueva,2024-05-18 00:00:00,"Miguel , Del Solar",Factoring
+388,20605385134,20100278708,Operación nueva,2024-05-31 00:00:00,"Miguel , Del Solar",Factoring
+391,20543121640,20518791983,Operación nueva,2024-05-11 00:00:00,"Miguel , Del Solar",Factoring
+398,20605385134,20387093053,Operación nueva,2024-05-31 00:00:00,"Miguel , Del Solar",Factoring
+399,20522117511,20548187266,Operación nueva,2024-05-11 00:00:00,"Miguel , Del Solar",Factoring
+407,20602541631,20100035121,Operación nueva,2024-05-31 00:00:00,"Guadalupe, Campos",Factoring
+414,10075237150,20536246852,Operación nueva,2024-05-26 00:00:00,"Guadalupe, Campos",Factoring
+415,20516185211,20100035121,Operación nueva,2024-05-31 00:00:00,"Guadalupe, Campos",Factoring
+418,20555507861,20609731576,Operación nueva,2024-05-19 00:00:00,"Guadalupe, Campos",Factoring
+419,20553373736,20543011976,Operación nueva,2024-05-15 00:00:00,"Guadalupe, Campos",Factoring
+421,20418664542,20606458585,Operación nueva,2024-05-12 00:00:00,"Guadalupe, Campos",Factoring
+422,20610111646,20511315922,Operación nueva,2024-05-11 00:00:00,"Guadalupe, Campos",Factoring
+428,20538079686,20114759733,Operación nueva,2024-05-03 00:00:00,"Cristian, Stanbury",Factoring
+429,20551991599,20607966991,Operación nueva,2024-05-25 00:00:00,"Cristian, Stanbury",Factoring
+430,20518574371,20224748711,Operación nueva,2024-05-10 00:00:00,"Cristian, Stanbury",Factoring
+431,20518574371,20100257298,Operación nueva,2024-05-02 00:00:00,"Cristian, Stanbury",Factoring
+433,20610740988,20514650161,Operación nueva,2024-05-26 00:00:00,"Cristian, Stanbury",Factoring
+435,20600529251,20514650161,Operación nueva,2024-05-19 00:00:00,"Cristian, Stanbury",Factoring
+436,20518574371,20512868046,Operación nueva,2024-05-10 00:00:00,"Cristian, Stanbury",Factoring
+440,20600653262,20548187266,Operación nueva,2024-05-09 00:00:00,"Martin, Huaccharaqui",Factoring
+443,20267178331,20515319574,Operación nueva,2024-05-31 00:00:00,"Martin, Huaccharaqui",Factoring
+444,20550163480,20482744983,Operación nueva,2024-05-22 00:00:00,"Martin, Huaccharaqui",Factoring
+454,20101049711,20606926295,Operación nueva,2024-05-26 00:00:00,"Martin, Huaccharaqui",Factoring
+455,20267178331,20265753460,Operación nueva,2024-05-09 00:00:00,"Martin, Huaccharaqui",Factoring
+456,20267178331,20428698569,Operación nueva,2024-05-05 00:00:00,"Martin, Huaccharaqui",Factoring
+458,20545684102,20521233991,Operación nueva,2024-05-22 00:00:00,"Leonardo, Castillo",Factoring
+459,20136492277,20517441792,Operación nueva,2024-05-09 00:00:00,"Leonardo, Castillo",Factoring
+460,20600537432,20209133394,Operación nueva,2024-05-15 00:00:00,"Leonardo, Castillo",Factoring
+466,20482744983,20606458585,Operación nueva,2024-05-25 00:00:00,"Leonardo, Castillo",Factoring
+474,20603426780,20516752581,Operación nueva,2024-05-09 00:00:00,"Reynaldo, Santiago",Factoring
+475,20608039938,20510885229,Operación nueva,2024-05-16 00:00:00,"Reynaldo, Santiago",Factoring
+479,20608039938,20537995581,Operación nueva,2024-05-29 00:00:00,"Reynaldo, Santiago",Factoring
+480,20515392816,20100136318,Operación nueva,2024-05-22 00:00:00,"Reynaldo, Santiago",Factoring
+481,20603426780,20143920764,Operación nueva,2024-05-12 00:00:00,"Reynaldo, Santiago",Factoring
+484,20549308873,20516368994,Operación nueva,2024-05-15 00:00:00,"Reynaldo, Santiago",Factoring
+486,20600189230,20102078781,Operación nueva,2024-05-12 00:00:00,"Reynaldo, Santiago",Factoring
+487,20603426780,20562975374,Operación nueva,2024-05-10 00:00:00,"Reynaldo, Santiago",Factoring
+488,20603208626,20548187266,Operación nueva,2024-05-16 00:00:00,"Reynaldo, Santiago",Factoring
+493,20606587385,20421526258,Operación nueva,2024-05-29 00:00:00,"Reynaldo, Santiago",Factoring
+494,20605744045,20566030188,Operación nueva,2024-05-31 00:00:00,"Reynaldo, Santiago",Factoring
+498,20551978908,20517314413,Operación nueva,2024-05-23 00:00:00,"Julissa, Tito",Factoring
+499,20610168915,20378890161,Operación nueva,2024-05-19 00:00:00,"Julissa, Tito",Factoring
+500,20518246951,20102078781,Operación nueva,2024-05-22 00:00:00,"Marcos, Vargas",Factoring
+501,20606621079,20102078781,Operación nueva,2024-05-25 00:00:00,"Marcos, Vargas",Factoring
+502,20602310966,20102078781,Operación nueva,2024-05-29 00:00:00,"Marcos, Vargas",Factoring
+503,20538472931,20102078781,Operación nueva,2024-05-22 00:00:00,"Marcos, Vargas",Factoring
+504,20524751632,20536492381,Operación nueva,2024-06-08 00:00:00,"Julissa, Tito",Factoring
+506,20608413481,20610049886,Operación nueva,2024-06-28 00:00:00,"Julissa, Tito",Factoring
+507,20492977005,20607976512,Operación nueva,2024-06-30 00:00:00,"Julissa, Tito",Factoring
+508,20335253389,20610049886,Operación nueva,2024-06-26 00:00:00,"Julissa, Tito",Factoring
+515,20515392816,20100136580,Operación nueva,2024-06-14 00:00:00,"Reynaldo, Santiago",Factoring
+516,20604102601,20101087566,Operación nueva,2024-06-02 00:00:00,"Reynaldo, Santiago",Factoring
+518,20545689082,20102078781,Operación nueva,2024-06-19 00:00:00,"Reynaldo, Santiago",Factoring
+520,20604102601,20385739771,Operación nueva,2024-06-02 00:00:00,"Reynaldo, Santiago",Factoring
+522,20563050099,20550372640,Operación nueva,2024-06-30 00:00:00,"Reynaldo, Santiago",Factoring
+523,20606882069,20538225763,Operación nueva,2024-06-05 00:00:00,"Reynaldo, Santiago",Factoring
+526,20549308873,20519219922,Operación nueva,2024-06-16 00:00:00,"Reynaldo, Santiago",Factoring
+530,20547369085,20607908754,Operación nueva,2024-06-09 00:00:00,"Cristian, Stanbury",Factoring
+535,20606270942,20516368994,Operación nueva,2024-06-23 00:00:00,"Cristian, Stanbury",Factoring
+536,20548600210,20607908754,Operación nueva,2024-06-15 00:00:00,"Cristian, Stanbury",Factoring
+543,0,20535637599,Operación nueva,2024-06-28 00:00:00,"Cristian, Stanbury",Confirming
+544,20267178331,20373008533,Operación nueva,2024-06-02 00:00:00,"Martin, Huaccharaqui",Factoring
+547,20451547420,20607121878,Operación nueva,2024-06-08 00:00:00,"Martin, Huaccharaqui",Factoring
+558,20512258647,20157036794,Operación nueva,2024-06-26 00:00:00,"Miguel , Del Solar",Factoring
+560,20551198058,20217427593,Operación nueva,2024-06-02 00:00:00,"Miguel , Del Solar",Factoring
+570,20551198058,20100154057,Operación nueva,2024-06-08 00:00:00,"Miguel , Del Solar",Factoring
+578,10074681960,20515909886,Operación nueva,2024-06-15 00:00:00,"Guadalupe, Campos",Factoring
+581,20551698611,20100163986,Operación nueva,2024-06-23 00:00:00,"Guadalupe, Campos",Factoring
+583,20610312846,20109072177,Operación nueva,2024-06-16 00:00:00,"Guadalupe, Campos",Factoring
+584,20516185211,20516368994,Operación nueva,2024-06-09 00:00:00,"Guadalupe, Campos",Factoring
+590,0,20549623981,Operación nueva,2024-06-26 00:00:00,"Guadalupe, Campos",Confirming
+593,20604065675,20506675457,Operación nueva,2024-06-28 00:00:00,"Leonardo, Castillo",Factoring
+595,20516368994,20607441139,Operación nueva,2024-06-22 00:00:00,"Leonardo, Castillo",Factoring
+596,20482744983,20550488192,Operación nueva,2024-06-23 00:00:00,"Leonardo, Castillo",Factoring
+604,20481708461,20504061052,Operación nueva,2024-06-16 00:00:00,"Giancarlo, La Torre",Factoring
+613,20516185211,20504041027,Operación nueva,2024-07-13 00:00:00,"Guadalupe, Campos",Factoring
+615,20608636154,20100163986,Operación nueva,2024-07-05 00:00:00,"Guadalupe, Campos",Factoring
+617,20606875275,20100121809,Operación nueva,2024-07-06 00:00:00,"Guadalupe, Campos",Factoring
+628,20602965563,20543083888,Operación nueva,2024-07-12 00:00:00,"Guadalupe, Campos",Factoring
+629,20602143016,20610063374,Operación nueva,2024-07-14 00:00:00,"Guadalupe, Campos",Factoring
+637,20609592134,20109072177,Operación nueva,2024-07-25 00:00:00,"Reynaldo, Santiago",Factoring
+638,20604102601,20563249766,Operación nueva,2024-07-24 00:00:00,"Reynaldo, Santiago",Factoring
+641,20513692111,20607908754,Operación nueva,2024-07-10 00:00:00,"Reynaldo, Santiago",Factoring
+647,20608499467,20517001636,Operación nueva,2024-07-06 00:00:00,"Reynaldo, Santiago",Factoring
+648,20562783203,20562975374,Operación nueva,2024-07-20 00:00:00,"Reynaldo, Santiago",Factoring
+652,20515792831,20486182351,Operación nueva,2024-07-24 00:00:00,"Reynaldo, Santiago",Factoring
+655,20604102601,20609638410,Operación nueva,2024-07-31 00:00:00,"Reynaldo, Santiago",Factoring
+657,20512258647,20507646051,Operación nueva,2024-07-06 00:00:00,"Miguel , Del Solar",Factoring
+665,20512258647,20100147514,Operación nueva,2024-07-14 00:00:00,"Miguel , Del Solar",Factoring
+669,20123531389,20100154057,Operación nueva,2024-07-06 00:00:00,"Miguel , Del Solar",Factoring
+672,20123531389,20217427593,Operación nueva,2024-07-17 00:00:00,"Miguel , Del Solar",Factoring
+675,20605385134,20297868790,Operación nueva,2024-07-14 00:00:00,"Miguel , Del Solar",Factoring
+676,20458503401,20100054184,Operación nueva,2024-07-21 00:00:00,"Miguel , Del Solar",Factoring
+677,0,20372081831,Operación nueva,2024-07-14 00:00:00,"Miguel , Del Solar",Confirming
+678,0,20486496372,Operación nueva,2024-07-20 00:00:00,"Miguel , Del Solar",Confirming
+681,20602317227,20100251176,Operación nueva,2024-07-06 00:00:00,"Martin, Huaccharaqui",Factoring
+682,20602317227,20550028515,Operación nueva,2024-07-03 00:00:00,"Martin, Huaccharaqui",Factoring
+696,20604065675,20418453177,Operación nueva,2024-07-04 00:00:00,"Leonardo, Castillo",Factoring
+700,20552015445,20521233991,Operación nueva,2024-07-18 00:00:00,"Leonardo, Castillo",Factoring
+704,0,20610049886,Operación nueva,2024-07-04 00:00:00,"Leonardo, Castillo",Confirming
+718,20601390125,20602703119,Operación nueva,2024-07-27 00:00:00,"Julissa, Tito",Factoring
+720,20601143888,20511313717,Operación nueva,2024-07-18 00:00:00,"Julissa, Tito",Factoring
+721,20601143888,20513328495,Operación nueva,2024-07-26 00:00:00,"Julissa, Tito",Factoring
+722,20335253389,20516368994,Operación nueva,2024-07-26 00:00:00,"Julissa, Tito",Factoring
+723,20101300341,20509193828,Operación nueva,2024-07-06 00:00:00,"Julissa, Tito",Factoring
+724,20535838900,20610049886,Operación nueva,2024-07-26 00:00:00,"Julissa, Tito",Factoring
+725,20101300341,20570512481,Operación nueva,2024-07-07 00:00:00,"Julissa, Tito",Factoring
+726,20538742580,20610049886,Operación nueva,2024-07-14 00:00:00,"Julissa, Tito",Factoring
+727,20554134875,20506629188,Operación nueva,2024-07-12 00:00:00,"Julissa, Tito",Factoring
+728,20550768802,20610049886,Operación nueva,2024-07-13 00:00:00,"Julissa, Tito",Factoring
+729,20604866716,20610063374,Operación nueva,2024-07-24 00:00:00,"Julissa, Tito",Factoring
+730,20600628144,20605226168,Operación nueva,2024-07-18 00:00:00,"Giancarlo, La Torre",Factoring
