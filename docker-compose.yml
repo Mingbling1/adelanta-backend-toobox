@@ -1,6 +1,6 @@
 services:
     web:
-        image: ${ECR_REPOSITORY_URI}/fastapi-app:latest
+        image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
         container_name: web
         ports:
             - "8000:8000"
@@ -57,14 +57,14 @@ services:
                 max-size: "100k"
 
     worker:
-        image: ${ECR_REPOSITORY_URI}/fastapi-app:latest
+        image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
         container_name: rq_worker
         command: rq worker --name worker@%h --with-scheduler emails
         restart: unless-stopped
         # env_file:
         # - ./.env  # Cargar todas las variables del archivo .env
         volumes:
-        - ./templates:/app/templates
+            - ./templates:/app/templates
         environment:
             - REDIS_URL=redis://redis:6379/0
         depends_on:
