@@ -2,6 +2,8 @@ services:
     web:
         image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
         container_name: web
+        env_file:
+            - ./.env
         ports:
             - "8000:8000"
         restart: unless-stopped
@@ -59,10 +61,10 @@ services:
     worker:
         image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
         container_name: rq_worker
+        env_file:
+            - ./.env
         command: rq worker --name worker@%h --with-scheduler emails
         restart: unless-stopped
-        # env_file:
-        # - ./.env  # Cargar todas las variables del archivo .env
         volumes:
             - ./templates:/app/templates
         environment:
