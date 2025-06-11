@@ -59,7 +59,12 @@ async def app_lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    lifespan=app_lifespan, default_response_class=ORJSONResponse, root_path="/api"
+    lifespan=app_lifespan,
+    default_response_class=ORJSONResponse,
+    root_path="/api",
+    openapi_url="/api/openapi.json",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 # CRONJOB
 app.include_router(
