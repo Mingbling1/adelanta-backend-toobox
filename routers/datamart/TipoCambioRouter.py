@@ -10,14 +10,14 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[TipoCambioSchema])
-async def get_all(
+async def obtener_todos_con_filtro_fecha(
     limit: int = 10,
     offset: int = 0,
     year_month: str | None = None,
     service: TipoCambioService = Depends(),
 ):
     try:
-        return await service.get_all(limit, offset, year_month)
+        return await service.obtener_todos_con_filtro_fecha(limit, offset, year_month)
     except Exception as e:
         return {"message": str(e), "success": False}
 

@@ -16,41 +16,13 @@ class TipoCambioService:
     def __init__(self, tipo_cambio_repository: TipoCambioRepository = Depends()):
         self.tipo_cambio_repository = tipo_cambio_repository
 
-    async def get_all(
+    async def obtener_todos_con_filtro_fecha(
         self, limit: int = 10, offset: int = 0, year_month: str | None = None
     ) -> list[TipoCambioModel]:
         # Obtener registros del repositorio
-        records: list[TipoCambioModel] = await self.tipo_cambio_repository.get_all(
-            limit, offset
+        return await self.tipo_cambio_repository.obtener_todos_con_filtro_fecha(
+            limit=limit, offset=offset, year_month=year_month
         )
-
-        if not records:
-            return []
-
-        # Convertir registros a DataFrame
-        df = pd.DataFrame([record.to_dict() for record in records])
-
-        # Convertir la columna a datetime y ordenar
-        df["TipoCambioFecha"] = pd.to_datetime(
-            df["TipoCambioFecha"], format="%Y-%m-%d", errors="coerce"
-        )
-        df = df.sort_values("TipoCambioFecha")
-        print(df)
-        # Filtrar por año y mes si se proporciona year_month
-        if year_month:
-            year_int = int(year_month[:4])
-            month_int = int(year_month[5:])
-            mask = (df["TipoCambioFecha"].dt.year == year_int) & (
-                df["TipoCambioFecha"].dt.month == month_int
-            )
-            df = df[mask]
-        print(df)
-        # Convertir nuevamente la columna a string en formato "YYYY-MM-DD"
-        df["TipoCambioFecha"] = df["TipoCambioFecha"].dt.strftime("%Y-%m-%d")
-
-        # Reconstruir las instancias de TipoCambioModel a partir de cada fila
-        list_models = [TipoCambioModel(**row) for _, row in df.iterrows()]
-        return list_models
 
     async def create_many(self, input: list[TipoCambioPostRequestSchema]):
         await self.tipo_cambio_repository.create_many([i.model_dump() for i in input])
