@@ -18,10 +18,10 @@ check_certificate() {
     
     if [ -f "$cert_path" ]; then
         if openssl x509 -in "$cert_path" -noout -checkend 2592000 2>/dev/null; then
-            echo "Certificado válido encontrado para $domain (expira en más de 30 días)"
+            echo "Certificado válido encontrado para $domain"
             return 0
         else
-            echo "Certificado encontrado pero expira pronto o es inválido"
+            echo "Certificado encontrado pero expira pronto"
             return 1
         fi
     else
@@ -30,7 +30,7 @@ check_certificate() {
     fi
 }
 
-# FUNCIÓN CORREGIDA: Crear enlaces simbólicos correctos
+# FUNCIÓN CORREGIDA: Crear enlaces simbólicos en el sistema de archivos local
 fix_certificate_path() {
     local domain=$1
     local main_cert_dir="$data_path/conf/live/$domain"
@@ -46,28 +46,54 @@ fix_certificate_path() {
         # Crear directorio principal
         mkdir -p "$main_cert_dir"
         
-        # Crear enlaces simbólicos para cada archivo del certificado
-        docker-compose run --rm --entrypoint "\
-          mkdir -p /etc/letsencrypt/live/$domain && \
-          ln -sf /etc/letsencrypt/live/$domain-0001/fullchain.pem /etc/letsencrypt/live/$domain/fullchain.pem && \
-          ln -sf /etc/letsencrypt/live/$domain-0001/privkey.pem /etc/letsencrypt/live/$domain/privkey.pem && \
-          ln -sf /etc/letsencrypt/live/$domain-0001/cert.pem /etc/letsencrypt/live/$domain/cert.pem && \
-          ln -sf /etc/letsencrypt/live/$domain-0001/chain.pem /etc/letsencrypt/live/$domain/chain.pem" certbot
+        # Crear enlaces simbólicos relativos (CORRECCIÓN IMPORTANTE)
+        ln -sf "../$domain-0001/fullchain.pem" "$main_cert_dir/fullchain.pem"
+        ln -sf "../$domain-0001/privkey.pem" "$main_cert_dir/privkey.pem"
+        ln -sf "../$domain-0001/cert.pem" "$main_cert_dir/cert.pem"
+        ln -sf "../$domain-0001/chain.pem" "$main_cert_dir/chain.pem"
         
-        echo "Enlaces simbólicos creados: $domain -> $domain-0001"
+        echo "Enlaces simbólicos creados:"
+        ls -la "$main_cert_dir/"
         return 0
     elif [ -d "$main_cert_dir" ]; then
         echo "Directorio principal ya existe: $main_cert_dir"
-        return 0
+        # Verificar que los enlaces existan
+        if [ -f "$main_cert_dir/fullchain.pem" ]; then
+            echo "Certificado principal encontrado"
+            return 0
+        else
+            echo "Directorio existe pero sin certificados, recreando enlaces..."
+            if [ -d "$duplicate_cert_dir" ]; then
+                ln -sf "../$domain-0001/fullchain.pem" "$main_cert_dir/fullchain.pem"
+                ln -sf "../$domain-0001/privkey.pem" "$main_cert_dir/privkey.pem"
+                ln -sf "../$domain-0001/cert.pem" "$main_cert_dir/cert.pem"
+                ln -sf "../$domain-0001/chain.pem" "$main_cert_dir/chain.pem"
+                return 0
+            fi
+        fi
     else
         echo "No se encontró ningún certificado"
         return 1
     fi
 }
 
+# FUNCIÓN AÑADIDA: Limpiar certificados duplicados
+cleanup_duplicate_certs() {
+    local domain=$1
+    echo "### Limpiando certificados duplicados para $domain..."
+    
+    # Eliminar certificados con sufijos usando docker
+    docker-compose run --rm --entrypoint "\
+      find /etc/letsencrypt/live -name '$domain-*' -type d -exec rm -rf {} + 2>/dev/null || true" certbot
+    docker-compose run --rm --entrypoint "\
+      find /etc/letsencrypt/archive -name '$domain-*' -type d -exec rm -rf {} + 2>/dev/null || true" certbot
+    docker-compose run --rm --entrypoint "\
+      find /etc/letsencrypt/renewal -name '$domain-*.conf' -type f -exec rm -f {} + 2>/dev/null || true" certbot
+}
+
 # Verificar variable de entorno ECR
 if [ -z "$ECR_REPOSITORY_URI" ]; then
-    echo "### Advertencia: ECR_REPOSITORY_URI no está configurada"
+    echo "### Configurando ECR_REPOSITORY_URI temporal"
     export ECR_REPOSITORY_URI="dummy-value"
 fi
 
@@ -96,6 +122,8 @@ for domain in "${domains[@]}"; do
         if docker-compose ps nginx | grep -q "Up"; then
             echo "### ✅ nginx iniciado correctamente después de corrección"
             exit 0
+        else
+            echo "### ⚠️ nginx aún falla, continuando con obtención de certificado..."
         fi
     fi
 done
