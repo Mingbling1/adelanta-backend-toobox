@@ -50,8 +50,11 @@ jobs:
           cp -r nginx/* ~/app/nginx/ || true
           cp docker-compose.yml ~/app/ || true
           cp init-letsencrypt.sh ~/app/ || true
+          cp cloudflare-ssl.sh ~/app/ || true  # ← AÑADE ESTA LÍNEA
           chmod -R 755 ~/app/templates
           chmod 755 ~/app/init-letsencrypt.sh || true
+          chmod 755 ~/app/cloudflare-ssl.sh || true  # ← AÑADE ESTA LÍNEA TAMBIÉN
+
           
           # Ir al directorio de la aplicación y desplegar
           cd ~/app
@@ -69,16 +72,11 @@ jobs:
           # Configurar SSL con Cloudflare DNS
           echo "Preparando para SSL..."
 
-          # Copiar script de SSL para Cloudflare
-          cp cloudflare-ssl.sh ~/app/ || true
-          chmod +x ~/app/cloudflare-ssl.sh || echo "Error en chmod"
-
           # Configurar credenciales de Cloudflare 
-          cd ~/app
           export CLOUDFLARE_EMAIL="${{ secrets.CLOUDFLARE_EMAIL }}"
           export CLOUDFLARE_API_KEY="${{ secrets.CLOUDFLARE_API_KEY }}"
 
-          # Ejecutar script
+          # Ejecutar script (ya no necesitas copiarlo aquí porque ya lo copiaste arriba)
           ./cloudflare-ssl.sh || echo "Advertencia: Error al configurar SSL con Cloudflare"
 
           echo "Despliegue completado"
