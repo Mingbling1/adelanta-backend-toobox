@@ -66,20 +66,20 @@ jobs:
           docker-compose pull
           docker-compose up -d
           
-          # Configurar SSL
-
-          # Añadir diagnóstico
+          # Configurar SSL con Cloudflare DNS
           echo "Preparando para SSL..."
-          ls -la ./init-letsencrypt.sh || echo "Script no encontrado"
-          
-          # Intentar sin sudo primero
-          echo "Intentando ejecutar sin sudo..."
-          chmod +x ./init-letsencrypt.sh || echo "Error en chmod"
-          ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL sin sudo"      
-          echo "Finalizado intento sin sudo"
-          
-          # Si falla, intentar con sudo
-          sudo ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL"
+
+          # Copiar script de SSL para Cloudflare
+          cp cloudflare-ssl.sh ~/app/ || true
+          chmod +x ~/app/cloudflare-ssl.sh || echo "Error en chmod"
+
+          # Configurar credenciales de Cloudflare 
+          cd ~/app
+          export CLOUDFLARE_EMAIL="${{ secrets.CLOUDFLARE_EMAIL }}"
+          export CLOUDFLARE_API_KEY="${{ secrets.CLOUDFLARE_API_KEY }}"
+
+          # Ejecutar script
+          ./cloudflare-ssl.sh || echo "Advertencia: Error al configurar SSL con Cloudflare"
 
           echo "Despliegue completado"
 
