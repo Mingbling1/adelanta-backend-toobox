@@ -57,7 +57,7 @@ if [ $staging != "0" ]; then staging_arg="--staging"; fi
 echo "### Solicitando certificado Let's Encrypt usando validación DNS de Cloudflare..."
 docker-compose run --rm --entrypoint "\
   certbot certonly --dns-cloudflare \
-    --dns-cloudflare-credentials-file /cloudflare-credentials/credentials.ini \
+    --dns-cloudflare-credentials /cloudflare-credentials/credentials.ini \
     $staging_arg \
     $email_arg \
     $domain_args \
