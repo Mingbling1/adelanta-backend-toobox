@@ -1,20 +1,19 @@
 #!/bin/bash
 
 # Configuración
-domains=(apiToolbox.adelantafactoring.com)
+domains=(apitoolbox.adelantafactoring.com)  # ← CAMBIADO A MINÚSCULAS
 rsa_key_size=4096
 data_path="./data/certbot"
 email="jimmy.auris@adelantafactoring.com"
-staging=0 # Cambia a 1 para pruebas
+staging=0
 
-# Usar credenciales de variables de entorno o valores predeterminados
-cf_email=${CLOUDFLARE_EMAIL:-"jimmy.auris@adelantafactoring.com"}
-cf_key=${CLOUDFLARE_API_KEY:-""}
+# Usar credenciales de variables de entorno
+cf_email=${CLOUDFLARE_EMAIL}
+cf_key=${CLOUDFLARE_API_KEY}
 
 # Verificar que la API key esté disponible
 if [ -z "$cf_key" ]; then
   echo "Error: No se proporcionó CLOUDFLARE_API_KEY"
-  echo "Ejecute el script con: CLOUDFLARE_API_KEY=tu-api-key ./cloudflare-ssl.sh"
   exit 1
 fi
 
@@ -22,18 +21,19 @@ echo "Instalando plugin de Cloudflare..."
 docker-compose run --rm --entrypoint "\
   pip install certbot-dns-cloudflare" certbot
 
-# Crear directorio para credenciales
-mkdir -p ~/app/cloudflare-credentials
+# Crear directorio para credenciales con permisos correctos
+sudo mkdir -p ./cloudflare-credentials  # ← CAMBIADO: usar ruta relativa y sudo
 echo "Creando archivo de credenciales Cloudflare..."
 
-# Crear archivo de credenciales solo con API KEY
-cat > ~/app/cloudflare-credentials/credentials.ini << EOF
-dns_cloudflare_email = "$cf_email"
-dns_cloudflare_api_key = "$cf_key"
+# Crear archivo de credenciales con sudo
+sudo tee ./cloudflare-credentials/credentials.ini > /dev/null << EOF
+dns_cloudflare_email = $cf_email
+dns_cloudflare_api_key = $cf_key
 EOF
 
-# Establecer permisos
-chmod 600 ~/app/cloudflare-credentials/credentials.ini
+# Establecer permisos correctos
+sudo chmod 600 ./cloudflare-credentials/credentials.ini
+sudo chown $(id -u):$(id -g) ./cloudflare-credentials/credentials.ini
 
 # Descargar parámetros TLS si no existen
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
@@ -63,7 +63,8 @@ docker-compose run --rm --entrypoint "\
     $domain_args \
     --rsa-key-size $rsa_key_size \
     --agree-tos \
-    --force-renewal" certbot
+    --force-renewal \
+    --non-interactive" certbot
 
 echo "### Reiniciando nginx..."
 docker-compose exec nginx nginx -s reload || docker-compose restart nginx
