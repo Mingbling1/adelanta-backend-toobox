@@ -12,10 +12,9 @@ email="jimmy.auris@adelantafactoring.com" # Adding a valid address is strongly r
 staging=0 # Set to 1 if you're testing your setup to avoid hitting request limits
 
 if [ -d "$data_path" ]; then
-  read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision
-  if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
-    exit
-  fi
+  # Automáticamente continuar sin preguntar
+  echo "Existing data found for $domains. Automatically continuing with certificate replacement."
+  # No decision check needed - always proceed
 fi
 
 
