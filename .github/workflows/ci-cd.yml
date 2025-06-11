@@ -67,9 +67,20 @@ jobs:
           docker-compose up -d
           
           # Configurar SSL
-          chmod +x ./init-letsencrypt.sh || true
-          sudo ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL"
+
+          # Añadir diagnóstico
+          echo "Preparando para SSL..."
+          ls -la ./init-letsencrypt.sh || echo "Script no encontrado"
           
+          # Intentar sin sudo primero
+          echo "Intentando ejecutar sin sudo..."
+          chmod +x ./init-letsencrypt.sh || echo "Error en chmod"
+          ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL sin sudo"      
+          echo "Finalizado intento sin sudo"
+          
+          # Si falla, intentar con sudo
+          sudo ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL"
+
           echo "Despliegue completado"
 
   test:
