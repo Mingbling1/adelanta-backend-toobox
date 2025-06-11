@@ -50,11 +50,8 @@ jobs:
           cp -r nginx/* ~/app/nginx/ || true
           cp docker-compose.yml ~/app/ || true
           cp init-letsencrypt.sh ~/app/ || true
-          cp cloudflare-ssl.sh ~/app/ || true  # ← AÑADE ESTA LÍNEA
           chmod -R 755 ~/app/templates
           chmod 755 ~/app/init-letsencrypt.sh || true
-          chmod 755 ~/app/cloudflare-ssl.sh || true  # ← AÑADE ESTA LÍNEA TAMBIÉN
-
           
           # Ir al directorio de la aplicación y desplegar
           cd ~/app
@@ -69,15 +66,20 @@ jobs:
           docker-compose pull
           docker-compose up -d
           
-          # Configurar SSL con Cloudflare DNS
+          # Configurar SSL
+
+          # Añadir diagnóstico
           echo "Preparando para SSL..."
-
-          # Configurar credenciales de Cloudflare 
-          export CLOUDFLARE_EMAIL="${{ secrets.CLOUDFLARE_EMAIL }}"
-          export CLOUDFLARE_API_KEY="${{ secrets.CLOUDFLARE_API_KEY }}"
-
-          # Ejecutar script (ya no necesitas copiarlo aquí porque ya lo copiaste arriba)
-          ./cloudflare-ssl.sh || echo "Advertencia: Error al configurar SSL con Cloudflare"
+          ls -la ./init-letsencrypt.sh || echo "Script no encontrado"
+          
+          # Intentar sin sudo primero
+          echo "Intentando ejecutar sin sudo..."
+          chmod +x ./init-letsencrypt.sh || echo "Error en chmod"
+          ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL sin sudo"      
+          echo "Finalizado intento sin sudo"
+          
+          # Si falla, intentar con sudo
+          sudo ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL"
 
           echo "Despliegue completado"
 
