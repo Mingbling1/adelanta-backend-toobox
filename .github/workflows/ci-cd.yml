@@ -31,6 +31,39 @@ jobs:
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest
 
+      # 🆕 NUEVA ETAPA: Limpiar imágenes antiguas
+      - name: Clean old ECR images
+        run: |
+          echo "🧹 Limpiando imágenes antiguas de ECR..."
+          
+          # Obtener imágenes ordenadas por fecha (más recientes primero)
+          images_to_delete=$(aws ecr describe-images \
+              --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+              --region ${{ secrets.AWS_REGION }} \
+              --query "reverse(sort_by(imageDetails, &imagePushedAt))[2:].imageDigest" \
+              --output text)
+          
+          if [ -n "$images_to_delete" ]; then
+              echo "Eliminando imágenes antiguas..."
+              for digest in $images_to_delete; do
+                  echo "Eliminando: $digest"
+                  aws ecr batch-delete-image \
+                      --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+                      --region ${{ secrets.AWS_REGION }} \
+                      --image-ids imageDigest=$digest || echo "Error eliminando $digest"
+              done
+              echo "✅ Limpieza completada"
+          else
+              echo "✅ No hay imágenes que eliminar"
+          fi
+          
+          # Mostrar estado final
+          echo "📊 Imágenes restantes:"
+          aws ecr describe-images \
+              --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+              --region ${{ secrets.AWS_REGION }} \
+              --query 'imageDetails[*].[imageTags[0],imagePushedAt,imageSizeInBytes]' \
+              --output table
   deploy:
     name: Deploy to EC2
     runs-on: self-hosted  # Usa el runner en tu EC2
