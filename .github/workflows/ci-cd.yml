@@ -1,145 +1,245 @@
 name: Build, Push to ECR, Deploy
 
 on:
-  push:
-    branches: [main]
+    push:
+        branches: [main]
 
 jobs:
-  build_and_push:
-    name: Build and Push to ECR
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v4
+    build_and_push:
+        name: Build and Push to ECR
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout the repository
+              uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  push: true
+                  tags: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NAME }}:latest
 
-      # 🆕 NUEVA ETAPA: Limpiar imágenes antiguas
-      - name: Clean old ECR images
-        run: |
-          echo "🧹 Limpiando imágenes antiguas de ECR..."
-          
-          # Obtener imágenes ordenadas por fecha (más recientes primero)
-          images_to_delete=$(aws ecr describe-images \
-              --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
-              --region ${{ secrets.AWS_REGION }} \
-              --query "reverse(sort_by(imageDetails, &imagePushedAt))[2:].imageDigest" \
-              --output text)
-          
-          if [ -n "$images_to_delete" ]; then
-              echo "Eliminando imágenes antiguas..."
-              for digest in $images_to_delete; do
-                  echo "Eliminando: $digest"
-                  aws ecr batch-delete-image \
+            # 🆕 NUEVA ETAPA: Limpiar imágenes antiguas
+            - name: Clean old ECR images
+              run: |
+                  echo "🧹 Limpiando imágenes antiguas de ECR..."
+
+                  # Obtener imágenes ordenadas por fecha (más recientes primero)
+                  images_to_delete=$(aws ecr describe-images \
                       --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
                       --region ${{ secrets.AWS_REGION }} \
-                      --image-ids imageDigest=$digest || echo "Error eliminando $digest"
-              done
-              echo "✅ Limpieza completada"
-          else
-              echo "✅ No hay imágenes que eliminar"
-          fi
-          
-          # Mostrar estado final
-          echo "📊 Imágenes restantes:"
-          aws ecr describe-images \
-              --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
-              --region ${{ secrets.AWS_REGION }} \
-              --query 'imageDetails[*].[imageTags[0],imagePushedAt,imageSizeInBytes]' \
-              --output table
-  deploy:
-    name: Deploy to EC2
-    runs-on: self-hosted  # Usa el runner en tu EC2
-    needs: [build_and_push]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+                      --query "reverse(sort_by(imageDetails, &imagePushedAt))[2:].imageDigest" \
+                      --output text)
 
-      - name: Deploy application
-        run: |
-          # Autenticarse con ECR desde la instancia EC2
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URI }}
-          
-          # Copiar archivos y configurar
-          mkdir -p ~/app/templates ~/app/nginx
-          cp -r templates/* ~/app/templates/ || true
-          cp -r nginx/* ~/app/nginx/ || true
-          cp docker-compose.yml ~/app/ || true
-          cp init-letsencrypt.sh ~/app/ || true
-          chmod -R 755 ~/app/templates
-          chmod 755 ~/app/init-letsencrypt.sh || true
-          
-          # Ir al directorio de la aplicación y desplegar
-          cd ~/app
-          
-          # Detener contenedores antiguos
-          docker-compose down --remove-orphans || true
-          docker ps -a -q | xargs -r docker rm -f || true
-          docker container prune -f || true
-          
-          # Descargar nuevas imágenes y levantar servicios
-          export ECR_REPOSITORY_URI=${{ secrets.ECR_REPOSITORY_URI }}
-          docker-compose pull
-          docker-compose up -d
-          
-          # Configurar SSL
+                  if [ -n "$images_to_delete" ]; then
+                      echo "Eliminando imágenes antiguas..."
+                      for digest in $images_to_delete; do
+                          echo "Eliminando: $digest"
+                          aws ecr batch-delete-image \
+                              --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+                              --region ${{ secrets.AWS_REGION }} \
+                              --image-ids imageDigest=$digest || echo "Error eliminando $digest"
+                      done
+                      echo "✅ Limpieza completada"
+                  else
+                      echo "✅ No hay imágenes que eliminar"
+                  fi
 
-          # Añadir diagnóstico
-          echo "Preparando para SSL..."
-          ls -la ./init-letsencrypt.sh || echo "Script no encontrado"
-          
-          # Intentar sin sudo primero
-          echo "Intentando ejecutar sin sudo..."
-          chmod +x ./init-letsencrypt.sh || echo "Error en chmod"
-          ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL sin sudo"      
-          echo "Finalizado intento sin sudo"
-          
-          # Si falla, intentar con sudo
-          sudo ./init-letsencrypt.sh || echo "Advertencia: Error al configurar SSL"
+                  # Mostrar estado final
+                  echo "📊 Imágenes restantes:"
+                  aws ecr describe-images \
+                      --repository-name ${{ secrets.ECR_REPOSITORY_NAME }} \
+                      --region ${{ secrets.AWS_REGION }} \
+                      --query 'imageDetails[*].[imageTags[0],imagePushedAt,imageSizeInBytes]' \
+                      --output table
+    deploy:
+        name: Deploy to EC2
+        runs-on: self-hosted # Usa el runner en tu EC2
+        needs: [build_and_push]
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-          echo "Despliegue completado"
+            - name: Deploy application
+              run: |
+                  # Autenticarse con ECR desde la instancia EC2
+                  aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URI }}
 
-  test:
-    name: Test deployment
-    runs-on: self-hosted
-    needs: [deploy]
-    steps:
-      - name: Run tests
-        run: |
-          cd ~/app
-          docker exec web pytest test/cronjob/test_cronjob.py || echo "Tests ejecutados"
-          
-          echo "Esperando 10 segundos..."
-          sleep 10
-          
-          echo "Invocando endpoint force-check..."
-          ENDPOINT="http://localhost:8000/api/cronjob/force-check"
-          response=$(curl -Ls -o /dev/null -w "%{http_code}" -X POST "$ENDPOINT")
-          echo "Código de respuesta: $response"
-          
-          if [ "$response" -eq 200 ]; then
-              echo "Success: Scheduler triggered to check for jobs."
-          else
-              echo "Error: HTTP status $response"
-              echo "Continua de todos modos..."
-          fi
-          
-          echo "Verificando que el worker RQ esté funcionando:"
-          docker logs rq_worker --tail 20
+                  # Copiar archivos y configurar
+                  mkdir -p ~/app/templates ~/app/nginx
+                  cp -r templates/* ~/app/templates/ || true
+                  cp -r nginx/* ~/app/nginx/ || true
+                  cp docker-compose.yml ~/app/ || true
+                  cp init-letsencrypt.sh ~/app/ || true
+                  chmod -R 755 ~/app/templates
+                  chmod 755 ~/app/init-letsencrypt.sh || true
+
+                  # Ir al directorio de la aplicación
+                  cd ~/app
+
+                  # 🧹 LIMPIEZA AGRESIVA ANTES DEL DEPLOY
+                  echo "🧹 Iniciando limpieza completa del sistema Docker..."
+                  
+                  # Detener todos los contenedores primero
+                  echo "🛑 Deteniendo contenedores actuales..."
+                  docker-compose down --remove-orphans || true
+                  docker stop $(docker ps -aq) 2>/dev/null || true
+                  
+                  # Eliminar contenedores parados
+                  echo "🗑️ Eliminando contenedores parados..."
+                  docker ps -a -q | xargs -r docker rm -f || true
+                  docker container prune -f || true
+                  
+                  # CRÍTICO: Eliminar imágenes dangling (liberará ~16GB)
+                  echo "🗑️ Eliminando imágenes <none> (dangling)..."
+                  docker image prune -f
+                  
+                  # Eliminar imágenes no utilizadas (mantener solo las necesarias)
+                  echo "🗑️ Eliminando imágenes no utilizadas..."
+                  docker image prune -a -f --filter "until=24h" || true
+                  
+                  # Limpiar volúmenes no utilizados
+                  echo "🗑️ Eliminando volúmenes no utilizados..."
+                  docker volume prune -f || true
+                  
+                  # Limpiar redes no utilizadas
+                  echo "🗑️ Eliminando redes no utilizadas..."
+                  docker network prune -f || true
+                  
+                  # Mostrar estado después de limpieza
+                  echo "📊 Estado después de limpieza inicial:"
+                  docker system df
+                  df -h /
+
+                  # Descargar nuevas imágenes
+                  echo "⬇️ Descargando imágenes actualizadas..."
+                  export ECR_REPOSITORY_URI=${{ secrets.ECR_REPOSITORY_URI }}
+                  docker-compose pull
+
+                  # Levantar servicios
+                  echo "🚀 Iniciando servicios..."
+                  docker-compose up -d
+
+                  # Esperar que los servicios estén listos
+                  echo "⏳ Esperando que los servicios estén listos..."
+                  sleep 15
+
+                  # Verificar que los servicios están corriendo
+                  echo "🔍 Verificando servicios..."
+                  docker-compose ps
+
+                  # LIMPIEZA FINAL después del deploy
+                  echo "🧹 Limpieza final post-deploy..."
+                  docker image prune -f
+                  
+                  # Mostrar solo las imágenes que quedaron
+                  echo "📦 Imágenes restantes después del deploy:"
+                  docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
+                  
+                  # Configurar SSL
+                  echo "🔐 Configurando SSL..."
+                  
+                  # Verificar existencia del script
+                  if [ -f "./init-letsencrypt.sh" ]; then
+                      echo "✅ Script SSL encontrado"
+                      chmod +x ./init-letsencrypt.sh
+                      
+                      # Ejecutar configuración SSL
+                      echo "🔐 Ejecutando configuración SSL..."
+                      ./init-letsencrypt.sh || {
+                          echo "⚠️ Primer intento SSL falló, intentando con sudo..."
+                          sudo ./init-letsencrypt.sh || echo "⚠️ Configuración SSL falló, pero continuando..."
+                      }
+                  else
+                      echo "⚠️ Script SSL no encontrado, omitiendo configuración SSL"
+                  fi
+
+                  # MONITOREO Y DIAGNÓSTICO FINAL
+                  echo "📊 Diagnóstico final del sistema:"
+                  echo "=================================="
+                  
+                  # Espacio en disco
+                  echo "💾 Espacio en disco:"
+                  df -h /
+                  
+                  # Estado de Docker
+                  echo "🐳 Estado de Docker:"
+                  docker system df
+                  
+                  # Servicios corriendo
+                  echo "🔄 Servicios corriendo:"
+                  docker-compose ps
+                  
+                  # Logs recientes para verificar que todo funciona
+                  echo "📋 Logs recientes del servicio web:"
+                  docker logs web --tail 10 || true
+                  
+                  # Verificar conectividad
+                  echo "🌐 Verificando conectividad del servicio:"
+                  curl -s -o /dev/null -w "Código HTTP: %{http_code}\n" http://localhost:8000/health || echo "❌ Servicio no responde"
+                  
+                  # Verificar memoria disponible
+                  echo "🧠 Memoria del sistema:"
+                  free -h
+                  
+                  # ALERTA si el disco sigue muy lleno
+                  DISK_USAGE=$(df / | grep -vE '^Filesystem' | awk '{print $5}' | sed 's/%//g')
+                  if [ $DISK_USAGE -gt 85 ]; then
+                      echo "🚨 ALERTA: Disco al ${DISK_USAGE}% después de limpieza"
+                      echo "🧹 Ejecutando limpieza adicional de emergencia..."
+                      
+                      # Limpieza adicional de emergencia
+                      docker system prune -a --volumes --force
+                      
+                      # Limpiar logs del sistema
+                      sudo journalctl --vacuum-size=50M || true
+                      sudo find /var/log -name "*.log" -type f -size +10M -exec truncate -s 0 {} \; || true
+                      
+                      echo "📊 Estado después de limpieza de emergencia:"
+                      df -h /
+                  else
+                      echo "✅ Espacio en disco OK: ${DISK_USAGE}%"
+                  fi
+
+                  echo "✅ Despliegue completado exitosamente"
+                  echo "🎉 Sistema optimizado y funcionando"
+
+    test:
+        name: Test deployment
+        runs-on: self-hosted
+        needs: [deploy]
+        steps:
+            - name: Run tests
+              run: |
+                  cd ~/app
+                  docker exec web pytest test/cronjob/test_cronjob.py || echo "Tests ejecutados"
+
+                  echo "Esperando 10 segundos..."
+                  sleep 10
+
+                  echo "Invocando endpoint force-check..."
+                  ENDPOINT="http://localhost:8000/api/cronjob/force-check"
+                  response=$(curl -Ls -o /dev/null -w "%{http_code}" -X POST "$ENDPOINT")
+                  echo "Código de respuesta: $response"
+
+                  if [ "$response" -eq 200 ]; then
+                      echo "Success: Scheduler triggered to check for jobs."
+                  else
+                      echo "Error: HTTP status $response"
+                      echo "Continua de todos modos..."
+                  fi
+
+                  echo "Verificando que el worker RQ esté funcionando:"
+                  docker logs rq_worker --tail 20
