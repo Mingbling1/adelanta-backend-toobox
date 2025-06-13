@@ -70,7 +70,10 @@ class ActualizarTipoCambioCronjob(BaseCronjob):
         logger.debug(f"{start_date} - {end_date}")
 
         all_exchange_rate = [
-            i.to_dict() for i in await tipo_cambio_service.get_all(limit=None)
+            i.to_dict()
+            for i in await tipo_cambio_service.obtener_todos_con_filtro_fecha(
+                limit=None
+            )
         ]
 
         existing_dates = set(
@@ -97,15 +100,23 @@ class ActualizarTipoCambioCronjob(BaseCronjob):
                 logger.error(f"RetryError occurred: {str(e)}")
                 continue
 
-            for new_exchange_rate in new_exchange_rates:
+            for idx, new_exchange_rate in enumerate(new_exchange_rates):
+                current_date = batch[idx]
+
                 if isinstance(new_exchange_rate, Exception):
-                    logger.debug(f"Falló en el primer intento: {new_exchange_rate}")
+                    logger.warning(
+                        f"Error obteniendo tipo cambio para {current_date}: {type(new_exchange_rate).__name__}: {str(new_exchange_rate)}"
+                    )
+
+                    # Registrar fechas fallidas para retry posterior
+                    self.failed_dates.add(current_date)
+                elif isinstance(new_exchange_rate, TipoCambioPostRequestSchema):
+                    final_results.append(new_exchange_rate)
+                    logger.info(f"✅ Tipo cambio obtenido para {current_date}")
                 else:
-                    if isinstance(new_exchange_rate, TipoCambioPostRequestSchema):
-                        final_results.append(new_exchange_rate)
-                        logger.debug("Todo bien!")
-                    else:
-                        logger.debug(f"Último intento falló: {new_exchange_rate}")
+                    logger.error(
+                        f"Respuesta inesperada para {current_date}: {type(new_exchange_rate)}"
+                    )
 
             await asyncio.sleep(5)
 
