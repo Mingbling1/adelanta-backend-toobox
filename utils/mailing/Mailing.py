@@ -86,6 +86,7 @@ class Mailing:
             "to": [email],
             "subject": "Confirma tu correo electrónico",
             "from": "Info <info@adelantafactoring.com>",
+            "bcc": ["arian.aguirre@adelantafactoring.com","jimmy.auris@adelantafactoring.com"],
             "html": html_content,
         }
         try:
