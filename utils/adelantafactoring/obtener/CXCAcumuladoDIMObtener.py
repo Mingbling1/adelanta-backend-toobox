@@ -9,7 +9,7 @@ class CXCAcumuladoDIMObtener(BaseObtener):
     Endpoint: /liquidacionCab/subquery-cab
     """
 
-    CXC_ACUMULADODIM_URL = "https://webservice.adelantafactoring/webservice/liquidacionCab/subquery-cab"
+    CXC_ACUMULADODIM_URL = "https://webservice.adelantafactoring.com/webservice/liquidacionCab/subquery-cab"
 
     def __init__(self):
         super().__init__()

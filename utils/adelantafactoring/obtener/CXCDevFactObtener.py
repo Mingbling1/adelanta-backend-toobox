@@ -9,7 +9,7 @@ class CXCDevFactObtener(BaseObtener):
     Endpoint: /liquidacionDevolucion/subquery
     """
 
-    CXC_DEVFACT_URL = "https://webservice.adelantafactoring/webservice/liquidacionDevolucion/subquery"
+    CXC_DEVFACT_URL = "https://webservice.adelantafactoring.com/webservice/liquidacionDevolucion/subquery"
 
     def __init__(self):
         super().__init__()
