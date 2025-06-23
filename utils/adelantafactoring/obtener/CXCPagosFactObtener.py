@@ -9,7 +9,7 @@ class CXCPagosFactObtener(BaseObtener):
     Endpoint: /liquidacionPago/subquery
     """
 
-    CXC_PAGOSFACT_URL = "http://localhost:8080/webservice/liquidacionPago/subquery"
+    CXC_PAGOSFACT_URL = "https://webservice.adelantafactoring/webservice/liquidacionPago/subquery"
 
     def __init__(self):
         super().__init__()
