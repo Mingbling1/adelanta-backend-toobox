@@ -5,7 +5,7 @@ from config.logger import logger
 from config.cronjob import CRONJOB
 from cronjobs.schemas.CronjobSchema import CronjobSchema, CronjobNowSchema
 from apscheduler.triggers.cron import CronTrigger
-from config.wsmanager import websocket_manager
+from config.websocket_manager import websocket_manager
 from fastapi import WebSocket, WebSocketDisconnect
 import math
 from fastapi.websockets import WebSocketState
@@ -14,7 +14,10 @@ import traceback
 import aiohttp
 import json
 import asyncio
-from config.redis import redis_client_manager  # Adjust the import path as necessary
+from config.redis import (
+    redis_client_manager,
+    Job,
+)
 import orjson
 
 router = APIRouter()
@@ -129,41 +132,66 @@ async def schedule_job_now(config: CronjobNowSchema):
         logger.debug(cronjob_kwargs)
 
         async def job_wrapper():
-            async def send_output(message: str, job_id: str):
-                await websocket_manager.send_message(message, job_id)
-
-            log_dict = {}
-
+            job_id = config.cronjob_config.job_id
             log_handler = websocket_manager
-            log_handler.log_dict = log_dict
-            log_handler.job_id = config.cronjob_config.job_id
+            log_handler.job_id = job_id
 
             logger.addHandler(log_handler)
 
             try:
-                await send_output(
-                    f"Starting job {config.cronjob_config.job_id}",
-                    config.cronjob_config.job_id,
+                await websocket_manager.send_structured_message(
+                    "log", f"🚀 Iniciando job {job_id}", job_id
                 )
+
+                # Ejecutar el job
                 await job_callable(**cronjob_kwargs)
-                await send_output(
-                    f"Job {config.cronjob_config.job_id} completed",
-                    config.cronjob_config.job_id,
-                )
+
+                # Notificar éxito y cerrar conexión
+                await websocket_manager.notify_job_completion(job_id, success=True)
+
             except Exception as e:
-                await send_output(
-                    f"Job {config.cronjob_config.job_id} failed: {str(e)}",
-                    config.cronjob_config.job_id,
+                # Notificar error y cerrar conexión
+                await websocket_manager.notify_job_completion(
+                    job_id, success=False, error_message=str(e)
                 )
-                logger.error(f"Job {config.cronjob_config.job_id} failed: {str(e)}")
+                logger.error(f"Job {job_id} failed: {str(e)}")
                 raise e
             finally:
                 logger.removeHandler(log_handler)
 
-        await job_wrapper()
+        # Ejecutar el job en background
+        asyncio.create_task(job_wrapper())
+
+        return {"message": f"Job {config.cronjob_config.job_id} started successfully"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.websocket("/{job_id}")
+async def websocket_endpoint(websocket: WebSocket, job_id: str):
+    await websocket_manager.connect(websocket, job_id)
+    try:
+        # Mantener conexión activa hasta que el job termine
+        while job_id in websocket_manager.active_jobs:
+            try:
+                # Recibir mensajes del cliente (opcional)
+                data = await websocket.receive_text()
+                await websocket_manager.send_structured_message(
+                    "echo", f"Received: {data}", job_id
+                )
+            except Exception:
+                # Si hay error recibiendo, probablemente el cliente se desconectó
+                break
+
+            await asyncio.sleep(0.1)  # Pequeña pausa para no sobrecargar
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket client disconnected for job {job_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for job {job_id}: {e}")
+    finally:
+        websocket_manager.disconnect(job_id)
 
 
 @router.post("/jobs/activate/{job_id}")
@@ -186,17 +214,6 @@ async def deactivate_job(job_id: str, cronjob: CRONJOB):
         raise HTTPException(status_code=404, detail="Job not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.websocket("/{job_id}")
-async def websocket_endpoint(websocket: WebSocket, job_id: str):
-    await websocket_manager.connect(websocket, job_id)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await websocket_manager.send_message(f"Message text was: {data}", job_id)
-    except WebSocketDisconnect:
-        websocket_manager.disconnect(job_id)
 
 
 @router.websocket("/jobs/relay")
@@ -379,49 +396,89 @@ async def download_job_result(job_id: str):
 
 @router.websocket("/jobs/utilidades")
 async def websocket_utilidades(
-    websocket: WebSocket, page: int = 1, page_size: int = 10, search: str = ""
+    websocket: WebSocket,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    search: str = Query(""),
+    update_interval: int = Query(3, ge=1, le=30),
 ):
     await websocket.accept()
+    logger.info("WebSocket client connected")
+
     try:
         while True:
-            # Obtiene los trabajos desde Redis u otra fuente.
-            jobs = await redis_client_manager.get_all_jobs(
-                search=search, page=page, page_size=page_size
-            )
-            if not isinstance(jobs, list):
-                logger.error("Jobs data is not a list: %s", jobs)
-                await websocket.send_json([])  # Envia lista vacía en caso de error
-                await asyncio.sleep(3)
+            # Verificar estado de conexión antes de procesar
+            if websocket.client_state == WebSocketState.DISCONNECTED:
+                logger.info("Client disconnected, exiting loop")
+                break
+            elif websocket.client_state == WebSocketState.CONNECTING:
+                logger.info("Client still connecting, waiting...")
+                await asyncio.sleep(1)
                 continue
 
-            valid_jobs = []
-            for job in jobs:
-                if isinstance(job, dict) and "job_id" in job:
-                    ttl = await redis_client_manager.get_client().ttl(
-                        f"job:{job['job_id']}:status"
+            # Solo procesar si está conectado
+            if websocket.client_state == WebSocketState.CONNECTED:
+                try:
+                    # Obtener trabajos tipados
+                    jobs: list[Job] = await redis_client_manager.get_all_jobs(
+                        search=search, page=page, page_size=page_size
                     )
-                    job["expires_in"] = ttl
-                    valid_jobs.append(job)
-                else:
-                    logger.error("Invalid job format: %s", job)
 
-            # Si no hay trabajos válidos, envia [] y continua
-            if not valid_jobs:
-                logger.info("No valid jobs to send")
-                await websocket.send_json([])
-                await asyncio.sleep(3)
-                continue
+                    # Añadir TTL a cada trabajo
+                    for job in jobs:
+                        ttl = await redis_client_manager.get_client().ttl(
+                            f"job:{job.job_id}:status"
+                        )
+                        job.expires_in = ttl if ttl > 0 else None
 
-            await websocket.send_json(valid_jobs)
-            await asyncio.sleep(3)  # Envia actualizaciones cada 3 segundos
+                    # Convertir a dict para envío JSON
+                    jobs_dict = [job.model_dump() for job in jobs]
+
+                    # Verificar estado nuevamente antes de enviar
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket.send_json(jobs_dict)
+                    else:
+                        logger.info("Client disconnected before sending data")
+                        break
+
+                except Exception as e:
+                    logger.error("Error processing jobs: %s", e)
+                    await asyncio.sleep(1)
+                    # Solo enviar error si aún está conectado
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        try:
+                            await websocket.send_json([])
+                        except Exception as send_err:
+                            logger.error("Failed to send error response: %s", send_err)
+                            break
+            else:
+                # Estado no manejado explícitamente
+                logger.warning("Unexpected WebSocket state: %s", websocket.client_state)
+                break
+
+            # Esperar antes de la siguiente iteración
+            await asyncio.sleep(update_interval)
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected")
+        logger.info("WebSocket client disconnected gracefully")
     except Exception as e:
-        logger.error("Error in websocket_endpoint: %s", e)
-        # Intenta enviar un mensaje vacio para no cerrar abruptamente (opcional)
-        try:
-            await websocket.send_json([])
-        except Exception as send_err:
-            logger.error("Error sending empty JSON: %s", send_err)
-        await websocket.close()
+        logger.error("Unexpected WebSocket error: %s", e)
+    finally:
+        # Limpieza: cerrar solo si no está ya desconectado
+        await _cleanup_websocket(websocket)
+
+
+async def _cleanup_websocket(websocket: WebSocket):
+    """
+    Función auxiliar para limpiar la conexión WebSocket de manera segura.
+    """
+    try:
+        if websocket.client_state not in [WebSocketState.DISCONNECTED]:
+            logger.info("Closing WebSocket connection")
+            await websocket.close()
+        else:
+            logger.info("WebSocket already disconnected, no cleanup needed")
+    except Exception as cleanup_err:
+        logger.debug(
+            "Error during WebSocket cleanup (this is usually normal): %s", cleanup_err
+        )

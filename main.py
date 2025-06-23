@@ -47,11 +47,13 @@ async def app_lifespan(app: FastAPI):
 
     container.init_resources()
 
-    cronjob_manager.start()
-    cronjob_manager.wakeup()
+
+    # cronjob_manager.wakeup()
     BaseCronjob.register_all_cronjobs()
+    await cronjob_manager.start()
     yield
-    cronjob_manager.close()
+    await cronjob_manager.shutdown()
+    logger.info("Servidor detenido")
 
     if sessionmanager._engine is not None:
         logger.info("Disconnecting from database!")

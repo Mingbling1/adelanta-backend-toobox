@@ -1,5 +1,5 @@
 from sqlalchemy.future import select
-from sqlalchemy import update, delete
+from sqlalchemy import update, delete, insert
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -216,3 +216,47 @@ class BaseRepository(Generic[T]):
                 status_code=500,
                 detail=f"Error al eliminar todos los registros: {str(e)}",
             )
+
+    def _chunks(self, lst, n):
+        """Divide una lista en lotes de tamaño n"""
+        for i in range(0, len(lst), n):
+            yield lst[i : i + n]
+
+    async def bulk_insert_chunked(
+        self,
+        records: List[Dict[str, Any]],
+        chunk_size: int = 1000,
+        autocommit: bool = True,
+    ) -> None:
+        """
+        Inserta en chunks secuenciales usando la misma sesión async (self.db).
+        """
+        total = len(records)
+        logger.warning(f"Total de registros a insertar: {total}")
+
+        # df = pd.DataFrame(records)
+        # df.to_excel("output.xlsx", index=False, engine="openpyxl", sheet_name="Sheet1")
+        for start in range(0, total, chunk_size):
+            chunk = records[start : start + chunk_size]
+            stmt = insert(self.entity_class).values(chunk)
+            await self.db.execute(stmt)
+            if autocommit:
+                await self.db.commit()
+
+    async def delete_and_bulk_insert_chunked(
+        self,
+        records: List[Dict[str, Any]],
+        chunk_size: int = 1000,
+        autocommit: bool = True,
+    ) -> None:
+        """
+        Borra todo (delete_all) y luego lanza el bulk_insert_chunked.
+        """
+        # 1) Trunca la tabla usando el helper existente
+        await self.delete_all(autocommit=autocommit)
+        # 2) Inserta en chunks
+        await self.bulk_insert_chunked(
+            records=records,
+            chunk_size=chunk_size,
+            autocommit=autocommit,
+        )

@@ -60,6 +60,7 @@ class Mailing:
             "to": [email],
             "subject": "¡Tu Simulación Está Aquí! Contáctanos para Saber más de Ella 📩📲",
             "from": "Adelanta Factoring<info@adelantafactoring.com>",
+            "bcc": ["arian.aguirre@adelantafactoring.com","jimmy.auris@adelantafactoring.com"],
             "html": html_content,
         }
         try:

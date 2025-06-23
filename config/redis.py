@@ -13,6 +13,26 @@ import orjson
 from config.logger import logger
 from config.settings import settings
 import traceback
+from pydantic import BaseModel, Field
+from typing import Optional, Dict
+
+
+class Job(BaseModel):
+    job_id: str
+    name: str
+    description: str
+    status: str
+    created_at: str
+    created_by: str
+    download_link: Optional[str] = None
+    params: Dict[str, Any] = Field(default_factory=dict)
+    expires_in: Optional[int] = None  # TTL en segundos
+
+    # Campos de paginación
+    total: int = 0
+    page: int = 1
+    page_size: int = 10
+    total_pages: int = 0
 
 
 class RedisClientManager:
@@ -22,9 +42,118 @@ class RedisClientManager:
             pool = ConnectionPool.from_url(url, max_connections=10)
         self.pool = pool
         self.client = aioredis.Redis(connection_pool=self.pool, decode_responses=True)
-        
+
         # Conexión síncrona para RQ
         self.sync_client = redis.Redis.from_url(url, decode_responses=True)
+
+    async def set_job_status(self, job_id: str, status: str, details: dict = None):
+        """
+        Actualiza el estado de un job en Redis y opcionalmente guarda detalles adicionales.
+
+        Args:
+            job_id: ID del job
+            status: Estado del job ('running', 'success', 'error', 'cancelled')
+            details: Diccionario con información adicional (timestamps, errores, etc.)
+        """
+        client = self.get_client()
+
+        try:
+            # Actualizar estado principal
+            await client.set(f"job:{job_id}:status", status)
+
+            # Si hay detalles adicionales, guardarlos
+            if details:
+                for key, value in details.items():
+                    if value is not None:
+                        if isinstance(value, (dict, list)):
+                            # Serializar objetos complejos
+                            await client.set(f"job:{job_id}:{key}", orjson.dumps(value))
+                        else:
+                            # Valores simples (string, int, bool)
+                            await client.set(f"job:{job_id}:{key}", str(value))
+
+            logger.debug(f"Updated job {job_id} status to {status}")
+
+        except Exception as e:
+            logger.error(f"Error updating job status for {job_id}: {e}")
+            raise
+
+    async def get_job_logs(self, job_id: str, limit: int = 50) -> list:
+        """
+        Obtiene los logs de un job desde Redis.
+
+        Args:
+            job_id: ID del job
+            limit: Número máximo de logs a obtener
+
+        Returns:
+            Lista de logs del job
+        """
+        client = self.get_client()
+
+        try:
+            # Buscar logs por patrón
+            log_keys = await client.keys(f"job:{job_id}:log:*")
+
+            if not log_keys:
+                return []
+
+            # Ordenar por timestamp (los keys deberían tener timestamp)
+            log_keys.sort()
+
+            # Limitar cantidad
+            if len(log_keys) > limit:
+                log_keys = log_keys[-limit:]
+
+            # Obtener contenido de los logs
+            logs = []
+            for key in log_keys:
+                log_data = await client.get(key)
+                if log_data:
+                    try:
+                        # Intentar parsear como JSON
+                        log_entry = orjson.loads(log_data)
+                        logs.append(log_entry)
+                    except:
+                        # Si no es JSON, tratarlo como string
+                        logs.append({"message": log_data, "timestamp": ""})
+
+            return logs
+
+        except Exception as e:
+            logger.error(f"Error getting logs for job {job_id}: {e}")
+            return []
+
+    async def add_job_log(self, job_id: str, message: str, level: str = "INFO"):
+        """
+        Añade un log a un job específico.
+
+        Args:
+            job_id: ID del job
+            message: Mensaje del log
+            level: Nivel del log (INFO, ERROR, DEBUG, etc.)
+        """
+        client = self.get_client()
+
+        try:
+            import time
+
+            timestamp = int(time.time() * 1000)  # timestamp en milisegundos
+
+            log_entry = {
+                "message": message,
+                "level": level,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "job_id": job_id,
+            }
+
+            log_key = f"job:{job_id}:log:{timestamp}"
+            await client.set(
+                log_key, orjson.dumps(log_entry), ex=3600
+            )  # Expire en 1 hora
+
+        except Exception as e:
+            logger.error(f"Error adding log for job {job_id}: {e}")
 
     async def connect(self):
         try:
@@ -47,7 +176,7 @@ class RedisClientManager:
         if not self.client:
             raise Exception("Redis async client is not initialized")
         return self.client
-    
+
     def get_sync_client(self) -> redis.Redis:
         """Obtiene el cliente síncrono para RQ y otras operaciones síncronas"""
         if not self.sync_client:
@@ -56,22 +185,27 @@ class RedisClientManager:
 
     async def get_all_jobs(
         self, search: str = "", page: int = 1, page_size: int = 10
-    ) -> list[dict[str, Any]]:
-
+    ) -> list[Job]:
         client = self.get_client()
         keys = await client.keys("job:*:status")
         jobs = []
+
         for key in keys:
             job_id = key.decode("utf-8").split(":")[1]
+
+            # Obtener datos del Redis
             status = await client.get(f"job:{job_id}:status")
             name = await client.get(f"job:{job_id}:name") or b""
             description = await client.get(f"job:{job_id}:description") or b""
             created_at = await client.get(f"job:{job_id}:created_at") or b""
             created_by = await client.get(f"job:{job_id}:created_by") or b""
+
+            # Link de descarga solo si está completado
             download_link = (
                 f"/cronjob/download/{job_id}" if status == b"completed" else None
             )
-            # Obtener los parámetros almacenados (si existen)
+
+            # Obtener parámetros
             params_bytes = await client.get(f"job:{job_id}:params")
             params = {}
             if params_bytes:
@@ -79,27 +213,33 @@ class RedisClientManager:
                     params = orjson.loads(params_bytes)
                 except Exception:
                     params = {}
-            job = {
+
+            # Crear objeto Job tipado
+            job_data = {
                 "job_id": job_id,
                 "name": name.decode("utf-8"),
                 "description": description.decode("utf-8"),
                 "status": status.decode("utf-8"),
                 "created_at": created_at.decode("utf-8"),
-                "download_link": download_link,
-                "params": params,  # Nuevo campo con los parámetros usados
                 "created_by": (
                     created_by.decode("utf-8")
                     if isinstance(created_by, bytes)
                     else created_by
                 ),
+                "download_link": download_link,
+                "params": params,
             }
+
+            job = Job(**job_data)
+
+            # Filtrar por búsqueda
             if (
-                search.lower() in job["name"].lower()
-                or search.lower() in job["description"].lower()
+                search.lower() in job.name.lower()
+                or search.lower() in job.description.lower()
             ):
                 jobs.append(job)
 
-        # Implementar la paginación
+        # Paginación
         total_jobs = len(jobs)
         total_pages = math.ceil(total_jobs / page_size)
         start = (page - 1) * page_size
@@ -108,10 +248,10 @@ class RedisClientManager:
 
         # Añadir información de paginación a cada trabajo
         for job in paginated_jobs:
-            job["total"] = total_jobs
-            job["page"] = page
-            job["page_size"] = page_size
-            job["total_pages"] = total_pages
+            job.total = total_jobs
+            job.page = page
+            job.page_size = page_size
+            job.total_pages = total_pages
 
         return paginated_jobs
 

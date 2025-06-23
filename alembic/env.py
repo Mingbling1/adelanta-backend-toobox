@@ -30,10 +30,10 @@ target_metadata = Base.metadata
 def include_object(object, name, type_, reflected, compare_to):
     # tablas a ignorar
     ignore_tables = {
-        "CXCAcumuladoDim",
-        "CXCPagosFact",
-        "CXCDevFact",
-        "alembic_datamart_version",  # <— añade aquí
+        # "CXCAcumuladoDim",
+        # "CXCPagosFact",
+        # "CXCDevFact",
+        # "alembic_datamart_version",  # <— añade aquí
     }
     if type_ == "table" and name in ignore_tables:
         return False

@@ -23,6 +23,12 @@ from repositories.datamart.ActualizacionReportesRepository import (
 )
 
 
+from repositories.datamart import (
+    CXCAcumuladoDIMRepository,
+    CXCDevFactRepository,
+    CXCPagosFactRepository,
+)
+
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
@@ -30,6 +36,7 @@ class Container(containers.DeclarativeContainer):
             "cronjobs.datamart.ActualizarTablaKPIAcumuladoCronjob",
             "cronjobs.datamart.ActualizarTablaRetomaCronjob",
             "cronjobs.datamart.ActualizarTablasReportesCronjob",
+            "cronjobs.datamart.ActualizarTablasCXCCronjob",
         ]
     )
 
@@ -87,6 +94,18 @@ class Container(containers.DeclarativeContainer):
 
     actualizacion_reportes_repository = providers.Singleton(
         ActualizacionReportesRepository, db=db_session
+    )
+
+
+    cxc_acumulado_dim_repository = providers.Singleton(
+        CXCAcumuladoDIMRepository, db=db_session
+    )
+
+    cxc_pagos_fact_repository = providers.Singleton(
+        CXCPagosFactRepository, db=db_session
+    )
+    cxc_dev_fact_repository = providers.Singleton(
+        CXCDevFactRepository, db=db_session
     )
 
 container = Container()

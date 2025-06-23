@@ -6,6 +6,9 @@ from .TipoCambioModel import TipoCambioModel
 from .SaldosModel import SaldosModel
 from .ReferidosModel import ReferidosModel
 from .ActualizacionReportesModel import ActualizacionReportesModel
+from .CXCAcumuladoDIMModel import CXCAcumuladoDIMModel
+from .CXCDevFactModel import CXCDevFactModel
+from .CXCPagosFactModel import CXCPagosFactModel
 
 
 __all__ = [
@@ -17,4 +20,7 @@ __all__ = [
     "SaldosModel",
     "ReferidosModel",
     "ActualizacionReportesModel",
+    "CXCAcumuladoDIMModel",
+    "CXCDevFactModel",
+    "CXCPagosFactModel",
 ]
