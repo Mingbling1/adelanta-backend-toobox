@@ -4,7 +4,7 @@ from dependency_injector.wiring import inject, Provide
 from utils.adelantafactoring.calculos import KPICalcular
 import pandas as pd
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
-from repositories.datamart.KPIRepository import KPIRepository
+from repositories.datamart.KPIAcumuladoRepository import KPIAcumuladoRepository
 
 
 class ActualizarTablaKPIAcumuladoCronjob(BaseCronjob):
@@ -17,7 +17,9 @@ class ActualizarTablaKPIAcumuladoCronjob(BaseCronjob):
         tipo_cambio_repository: TipoCambioRepository = Provide[
             Container.tipo_cambio_repository
         ],
-        kpi_repository: KPIRepository = Provide[Container.kpi_repository],
+        kpi_acumulado_repository: KPIAcumuladoRepository = Provide[
+            Container.kpi_acumulado_repository
+        ],
     ):
         try:
             # TipoCambio
@@ -36,8 +38,8 @@ class ActualizarTablaKPIAcumuladoCronjob(BaseCronjob):
                 tipo_reporte=0,
             )
 
-            await kpi_repository.delete_all()
-            await kpi_repository.create_many(kpi_acumulado_calcular)
+            await kpi_acumulado_repository.delete_all()
+            await kpi_acumulado_repository.create_many(kpi_acumulado_calcular)
 
         except Exception as e:
             raise e
