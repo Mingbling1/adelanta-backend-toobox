@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 class KPIAcumuladoModel(Base):
     __tablename__ = "kpi_acumulado"
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     CodigoLiquidacion: Mapped[str] = mapped_column(String(255))
     CodigoSolicitud: Mapped[str | None] = mapped_column(String(255), nullable=True)
     RUCCliente: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -83,9 +83,9 @@ class KPIAcumuladoModel(Base):
     Sector: Mapped[str | None] = mapped_column(String(255), nullable=True)
     GrupoEco: Mapped[str | None] = mapped_column(String(255), nullable=True)
     Referencia: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    tcFecha: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    tcCompra: Mapped[float | None] = mapped_column(Float, nullable=True)
-    tcVenta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    TipoCambioFecha: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    TipoCambioCompra: Mapped[float | None] = mapped_column(Float, nullable=True)
+    TipoCambioVenta: Mapped[float | None] = mapped_column(Float, nullable=True)
     ColocacionSoles: Mapped[float] = mapped_column(Float, nullable=False)
     MontoDesembolsoSoles: Mapped[float] = mapped_column(Float, nullable=False)
     Ingresos: Mapped[float] = mapped_column(Float, nullable=False)

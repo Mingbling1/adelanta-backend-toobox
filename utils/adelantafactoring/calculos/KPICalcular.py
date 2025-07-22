@@ -12,7 +12,7 @@ from .OperacionesFueraSistemaCalcular import OperacionesFueraSistemaCalcular
 from .SectorPagadoresCalcular import SectorPagadoresCalcular
 from .ComisionesCalcular import ComisionesCalcular
 from ..obtener.KPIObtener import KPIObtener
-from ..schemas.KPICalcularSchema import KPICalcularSchema
+from ..schemas.KPICalcularSchema import KPICalcularSchema, KPIAcumuladoCalcularSchema
 
 
 class KPICalcular(BaseCalcular):
@@ -63,9 +63,20 @@ class KPICalcular(BaseCalcular):
 
         # 7) Validar esquema con Pydantic y serializar
         try:
-            modelos = [KPICalcularSchema(**rec) for rec in df.to_dict(orient="records")]
+            # Seleccionar el esquema correcto según tipo_reporte
+            if tipo_reporte == 0:
+                # Para reportes acumulados (tipo_reporte = 0)
+                modelos = [
+                    KPIAcumuladoCalcularSchema(**rec)
+                    for rec in df.to_dict(orient="records")
+                ]
+            else:
+                # Para reportes normales (tipo_reporte = 2)
+                modelos = [
+                    KPICalcularSchema(**rec) for rec in df.to_dict(orient="records")
+                ]
         except ValidationError as err:
-            logger.error("Error validando KPI: %s", err)
+            logger.error("Error validando KPI (tipo_reporte=%s): %s", tipo_reporte, err)
             raise
 
         datos = [m.model_dump() for m in modelos]
