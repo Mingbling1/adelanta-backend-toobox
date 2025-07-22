@@ -16,8 +16,12 @@ class CXCPagosFactCalcularSchema(BaseModel):
     TipoPago: str = Field(..., description="Tipo de pago")
     SaldoDeuda: float = Field(..., description="Saldo de la deuda")
     ExcesoPago: float = Field(..., description="Exceso del pago")
-    FechaPagoCreacion: Optional[datetime] = Field(None, description="Fecha de creación del pago")
-    FechaPagoModificacion: Optional[datetime] = Field(None, description="Fecha de modificación del pago")
+    FechaPagoCreacion: Optional[datetime] = Field(
+        None, description="Fecha de creación del pago"
+    )
+    FechaPagoModificacion: Optional[datetime] = Field(
+        None, description="Fecha de modificación del pago"
+    )
 
     class Config:
         from_attributes = True

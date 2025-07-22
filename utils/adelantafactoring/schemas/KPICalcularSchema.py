@@ -360,7 +360,7 @@ class KPIAcumuladoCalcularSchema(BaseModel):
     @classmethod
     def convert_string_to_datetime(cls, value):
         if isinstance(value, str):
-            if value in ["", "-"]:
+            if value in ["", "-", "No Aplica"]:
                 return None
             try:
                 return datetime.strptime(value, "%d/%m/%Y")

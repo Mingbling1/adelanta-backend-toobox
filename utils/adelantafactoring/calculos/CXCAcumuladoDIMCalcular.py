@@ -574,7 +574,9 @@ class CXCAcumuladoDIMCalcular(BaseCalcular):
         try:
             # === 1. OBTENER Y VALIDAR DATOS BASE ===
             logger.info("📊 Obteniendo datos acumulados DIM desde webservice...")
-            data_acumulado = await self.cxc_acumulado_dim_obtener.obtener_acumulado_dim()
+            data_acumulado = (
+                await self.cxc_acumulado_dim_obtener.obtener_acumulado_dim()
+            )
 
             if not data_acumulado:
                 logger.warning("No se obtuvieron datos acumulados DIM")
@@ -583,8 +585,9 @@ class CXCAcumuladoDIMCalcular(BaseCalcular):
             # ✅ VALIDAR Y CONVERTIR TIPOS INMEDIATAMENTE
             logger.info("🔍 Validando y convirtiendo tipos de datos...")
             df_acumulado = self.validar_datos_raw(data_acumulado)
-            logger.info(f"📊 Datos validados: {len(df_acumulado)} registros con tipos correctos")
-
+            logger.info(
+                f"📊 Datos validados: {len(df_acumulado)} registros con tipos correctos"
+            )
 
             # === 2. OBTENER DATOS DE PAGOS ===
             if cxc_pagos_fact_df is None or cxc_pagos_fact_df.empty:

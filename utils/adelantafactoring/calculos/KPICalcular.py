@@ -124,6 +124,7 @@ class KPICalcular(BaseCalcular):
         """
         Incorpora las operaciones fuera de sistema,
         unifica nombres de ejecutivos y concatena DataFrames.
+        Elimina duplicados priorizando datos 'fuera del sistema' sobre 'dentro del sistema'.
         """
         # antes de fusionar, aseguramos fechas limpias en ambos DFs
         date_cols = ["FechaOperacion", "FechaConfirmado", "FechaDesembolso"]
@@ -144,11 +145,168 @@ class KPICalcular(BaseCalcular):
             .fillna(0)
         )
 
+        # NUEVA LÓGICA: Detectar y eliminar duplicados priorizando fuera del sistema
+        codigos_dentro = set(df_main["CodigoLiquidacion"].dropna().astype(str))
+        codigos_fuera = set(df_out["CodigoLiquidacion"].dropna().astype(str))
+
+        # Encontrar códigos que están tanto dentro como fuera
+        codigos_duplicados = codigos_dentro.intersection(codigos_fuera)
+
+        logger.info(f"Códigos dentro del sistema: {len(codigos_dentro)}")
+        logger.info(f"Códigos fuera del sistema: {len(codigos_fuera)}")
+        logger.info(f"Códigos duplicados encontrados: {len(codigos_duplicados)}")
+
+        if len(codigos_duplicados) > 0:
+            logger.info(
+                f"Eliminando {len(codigos_duplicados)} códigos duplicados del dataset interno"
+            )
+            logger.debug(f"Códigos duplicados: {sorted(list(codigos_duplicados))}")
+
+            # TEMPORAL: Generar Excel con análisis de duplicados para auditoría
+            # try:
+            #     # Crear DataFrame con códigos duplicados y sus datos
+            #     df_duplicados_dentro = df_main[
+            #         df_main["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
+            #     ].copy()
+            #     df_duplicados_fuera = df_out[
+            #         df_out["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
+            #     ].copy()
+
+            #     # Agregar origen para identificación
+            #     df_duplicados_dentro["Origen"] = "DENTRO_SISTEMA"
+            #     df_duplicados_fuera["Origen"] = "FUERA_SISTEMA"
+
+            #     # Crear archivo Excel con múltiples hojas
+            #     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+            #     filename = f"auditoria_codigos_duplicados_{timestamp}.xlsx"
+
+            #     with pd.ExcelWriter(filename, engine="openpyxl") as writer:
+            #         # Hoja 1: Resumen de duplicados
+            #         resumen_data = {
+            #             "Metrica": [
+            #                 "Total Códigos Dentro Sistema",
+            #                 "Total Códigos Fuera Sistema",
+            #                 "Códigos Duplicados Encontrados",
+            #                 "Registros Dentro con Duplicados",
+            #                 "Registros Fuera con Duplicados",
+            #             ],
+            #             "Valor": [
+            #                 len(codigos_dentro),
+            #                 len(codigos_fuera),
+            #                 len(codigos_duplicados),
+            #                 len(df_duplicados_dentro),
+            #                 len(df_duplicados_fuera),
+            #             ],
+            #         }
+            #         pd.DataFrame(resumen_data).to_excel(
+            #             writer, sheet_name="Resumen", index=False
+            #         )
+
+            #         # Hoja 2: Lista de códigos duplicados
+            #         pd.DataFrame(
+            #             {"CodigoLiquidacion": sorted(list(codigos_duplicados))}
+            #         ).to_excel(writer, sheet_name="Codigos_Duplicados", index=False)
+
+            #         # Hoja 3: Registros completos - DENTRO del sistema (que serán eliminados)
+            #         if not df_duplicados_dentro.empty:
+            #             df_duplicados_dentro.to_excel(
+            #                 writer,
+            #                 sheet_name="Registros_DENTRO_Eliminados",
+            #                 index=False,
+            #             )
+
+            #         # Hoja 4: Registros completos - FUERA del sistema (que se mantendrán)
+            #         if not df_duplicados_fuera.empty:
+            #             df_duplicados_fuera.to_excel(
+            #                 writer, sheet_name="Registros_FUERA_Mantenidos", index=False
+            #             )
+
+            #         # Hoja 5: Comparación lado a lado por código
+            #         comparacion_data = []
+            #         for codigo in sorted(codigos_duplicados):
+            #             dentro_reg = df_duplicados_dentro[
+            #                 df_duplicados_dentro["CodigoLiquidacion"].astype(str)
+            #                 == codigo
+            #             ]
+            #             fuera_reg = df_duplicados_fuera[
+            #                 df_duplicados_fuera["CodigoLiquidacion"].astype(str)
+            #                 == codigo
+            #             ]
+
+            #             comparacion_data.append(
+            #                 {
+            #                     "CodigoLiquidacion": codigo,
+            #                     "Registros_Dentro": len(dentro_reg),
+            #                     "Registros_Fuera": len(fuera_reg),
+            #                     "FechaOperacion_Dentro": (
+            #                         dentro_reg["FechaOperacion"].iloc[0]
+            #                         if not dentro_reg.empty
+            #                         else None
+            #                     ),
+            #                     "FechaOperacion_Fuera": (
+            #                         fuera_reg["FechaOperacion"].iloc[0]
+            #                         if not fuera_reg.empty
+            #                         else None
+            #                     ),
+            #                     "NetoConfirmado_Dentro": (
+            #                         dentro_reg["NetoConfirmado"].iloc[0]
+            #                         if not dentro_reg.empty
+            #                         else None
+            #                     ),
+            #                     "NetoConfirmado_Fuera": (
+            #                         fuera_reg["NetoConfirmado"].iloc[0]
+            #                         if not fuera_reg.empty
+            #                         else None
+            #                     ),
+            #                     "Ejecutivo_Dentro": (
+            #                         dentro_reg["Ejecutivo"].iloc[0]
+            #                         if not dentro_reg.empty
+            #                         else None
+            #                     ),
+            #                     "Ejecutivo_Fuera": (
+            #                         fuera_reg["Ejecutivo"].iloc[0]
+            #                         if not fuera_reg.empty
+            #                         else None
+            #                     ),
+            #                 }
+            #             )
+
+            #         pd.DataFrame(comparacion_data).to_excel(
+            #             writer, sheet_name="Comparacion_Detallada", index=False
+            #         )
+
+            #     logger.info(f"✅ Archivo de auditoría generado: {filename}")
+            #     logger.info(
+            #         f"📊 Contiene {len(codigos_duplicados)} códigos duplicados para revisión"
+            #     )
+
+            # except Exception as excel_error:
+            #     logger.warning(f"⚠️ Error generando Excel de auditoría: {excel_error}")
+            #     # No interrumpir el flujo principal por errores de Excel
+
+            # Eliminar de df_main los códigos que también están en df_out
+            df_main = df_main[
+                ~df_main["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
+            ]
+
+            logger.info(
+                f"Registros restantes en dataset interno después de limpieza: {len(df_main)}"
+            )
+
         # Mapear nombres de ejecutivos…
         mapping = self._map_executivos(df_main, df_out)
         df_out["Ejecutivo"] = df_out["Ejecutivo"].map(mapping)
 
-        return pd.concat([df_main, df_out], ignore_index=True)
+        # Concatenar datasets ya limpios
+        resultado = pd.concat([df_main, df_out], ignore_index=True)
+
+        logger.info(f"Dataset final fusionado: {len(resultado)} registros")
+        logger.info(f"Registros fuera del sistema: {len(df_out)}")
+        logger.info(
+            f"Registros dentro del sistema (después de limpieza): {len(df_main)}"
+        )
+
+        return resultado
 
     def _map_executivos(
         self, df_in: pd.DataFrame, df_out: pd.DataFrame, threshold: int = 75

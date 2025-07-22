@@ -11,6 +11,7 @@ from routers.datamart import (
     TipoCambioRouter,
     ReferidosRouter,
     KPIRouter,
+    KPIAcumuladoRouter,
     RetomasRouter,
     NuevosClientesNuevosPagadoresRouter,
 )  # DATAMART
@@ -46,7 +47,6 @@ async def app_lifespan(app: FastAPI):
     logger.info(f"Iniciando el servidor {app.title}")
 
     container.init_resources()
-
 
     # cronjob_manager.wakeup()
     BaseCronjob.register_all_cronjobs()
@@ -85,6 +85,11 @@ app.include_router(
     KPIRouter.router,
     prefix="/datamart/kpi",
     tags=["Datamart", "KPI"],
+)
+app.include_router(
+    KPIAcumuladoRouter.router,
+    prefix="/datamart/kpi-acumulado",
+    tags=["Datamart", "KPI Acumulado"],
 )
 app.include_router(
     RetomasRouter.router,
