@@ -30,12 +30,6 @@ class ActualizarTablasReportesCronjob(BaseCronjob):
             description="Actualiza las tablas de reportes: KPI, NuevosClientesNuevosPagadores y Saldos"
         )
 
-    # @timing_decorator
-    # async def actualizar_tablas_reportes(self, data: dict, service):
-    #     await service.delete_all()
-    #     if data:
-    #         await service.create_many(data)
-
     @inject
     async def run(
         self,

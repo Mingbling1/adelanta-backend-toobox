@@ -50,9 +50,14 @@ class ActualizarTablasReportesConfigSchema(BaseModel):
 class ActualizarTipoCambioCronjobConfigSchema(BaseModel):
     job_id: Literal["actualizartipocambiocronjob"]
 
+
 # === NUEVO SCHEMA PARA CXC ===
 class ActualizarTablasCXCConfigSchema(BaseModel):
     job_id: Literal["actualizartablascxccronjob"]
+
+
+class ActualizarCXCETLCronjobSchema(BaseModel):
+    job_id: Literal["actualizarcxcetlcronjob"]
 
 
 class CronjobSchema(CronjobConfigSchema):
@@ -61,7 +66,8 @@ class CronjobSchema(CronjobConfigSchema):
         ActualizarTablaKPIAcumuladoConfigSchema,
         ActualizarTablasReportesConfigSchema,
         ActualizarTipoCambioCronjobConfigSchema,
-        ActualizarTablasCXCConfigSchema,  # ✅ Agregado aquí
+        ActualizarTablasCXCConfigSchema,
+        ActualizarCXCETLCronjobSchema,
     ] = Field(..., discriminator="job_id")
 
 
@@ -71,5 +77,6 @@ class CronjobNowSchema(BaseModel):
         ActualizarTablaKPIAcumuladoConfigSchema,
         ActualizarTablasReportesConfigSchema,
         ActualizarTipoCambioCronjobConfigSchema,
-        ActualizarTablasCXCConfigSchema,  # ✅ Agregado aquí también
+        ActualizarTablasCXCConfigSchema,
+        ActualizarCXCETLCronjobSchema,
     ] = Field(..., discriminator="job_id")

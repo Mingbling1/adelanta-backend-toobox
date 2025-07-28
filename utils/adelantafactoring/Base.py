@@ -1,5 +1,6 @@
 import functools
 import time
+from config.logger import logger
 
 
 class Base:
@@ -13,9 +14,9 @@ class Base:
             t0 = time.time()
             result = func(*args, **kwargs)
             t1 = time.time()
-            print(f"Function {func.__name__} executed in {t1 - t0:.4f} seconds")
+            logger.warning(
+                f"Function {func.__name__} executed in {t1 - t0:.4f} seconds"
+            )
             return result
 
         return wrapper
-
-    

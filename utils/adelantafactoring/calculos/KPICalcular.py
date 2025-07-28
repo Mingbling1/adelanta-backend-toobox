@@ -119,8 +119,11 @@ class KPICalcular(BaseCalcular):
             logger.error(msg)
             raise ValueError(msg)
         return df.copy()
-
-    def _fusionar_fuera_sistema(self, df: pd.DataFrame) -> pd.DataFrame:
+    
+    @BaseCalcular.timeit
+    def _fusionar_fuera_sistema(
+        self, df: pd.DataFrame, date_format: str = "%d/%m/%Y"
+    ) -> pd.DataFrame:
         """
         Incorpora las operaciones fuera de sistema,
         unifica nombres de ejecutivos y concatena DataFrames.
@@ -129,9 +132,10 @@ class KPICalcular(BaseCalcular):
         # antes de fusionar, aseguramos fechas limpias en ambos DFs
         date_cols = ["FechaOperacion", "FechaConfirmado", "FechaDesembolso"]
         df_main = df.assign(FueraSistema="no")
-        df_main = self._convertir_fechas(df_main, date_cols, "%d/%m/%Y")
+        df_main = self._convertir_fechas(df_main, date_cols, date_format)
 
         df_out = self.operaciones_fuera_sistema_calcular.calcular_df().copy()
+
         df_out = self._convertir_fechas(df_out, date_cols, None)
 
         # Filtrar y preparar
@@ -152,144 +156,21 @@ class KPICalcular(BaseCalcular):
         # Encontrar códigos que están tanto dentro como fuera
         codigos_duplicados = codigos_dentro.intersection(codigos_fuera)
 
-        logger.info(f"Códigos dentro del sistema: {len(codigos_dentro)}")
-        logger.info(f"Códigos fuera del sistema: {len(codigos_fuera)}")
-        logger.info(f"Códigos duplicados encontrados: {len(codigos_duplicados)}")
+        logger.warning(f"Códigos dentro del sistema: {len(codigos_dentro)}")
+        logger.warning(f"Códigos fuera del sistema: {len(codigos_fuera)}")
+        logger.warning(f"Códigos duplicados encontrados: {len(codigos_duplicados)}")
 
         if len(codigos_duplicados) > 0:
-            logger.info(
+            logger.warning(
                 f"Eliminando {len(codigos_duplicados)} códigos duplicados del dataset interno"
             )
-            logger.debug(f"Códigos duplicados: {sorted(list(codigos_duplicados))}")
-
-            # TEMPORAL: Generar Excel con análisis de duplicados para auditoría
-            # try:
-            #     # Crear DataFrame con códigos duplicados y sus datos
-            #     df_duplicados_dentro = df_main[
-            #         df_main["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
-            #     ].copy()
-            #     df_duplicados_fuera = df_out[
-            #         df_out["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
-            #     ].copy()
-
-            #     # Agregar origen para identificación
-            #     df_duplicados_dentro["Origen"] = "DENTRO_SISTEMA"
-            #     df_duplicados_fuera["Origen"] = "FUERA_SISTEMA"
-
-            #     # Crear archivo Excel con múltiples hojas
-            #     timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-            #     filename = f"auditoria_codigos_duplicados_{timestamp}.xlsx"
-
-            #     with pd.ExcelWriter(filename, engine="openpyxl") as writer:
-            #         # Hoja 1: Resumen de duplicados
-            #         resumen_data = {
-            #             "Metrica": [
-            #                 "Total Códigos Dentro Sistema",
-            #                 "Total Códigos Fuera Sistema",
-            #                 "Códigos Duplicados Encontrados",
-            #                 "Registros Dentro con Duplicados",
-            #                 "Registros Fuera con Duplicados",
-            #             ],
-            #             "Valor": [
-            #                 len(codigos_dentro),
-            #                 len(codigos_fuera),
-            #                 len(codigos_duplicados),
-            #                 len(df_duplicados_dentro),
-            #                 len(df_duplicados_fuera),
-            #             ],
-            #         }
-            #         pd.DataFrame(resumen_data).to_excel(
-            #             writer, sheet_name="Resumen", index=False
-            #         )
-
-            #         # Hoja 2: Lista de códigos duplicados
-            #         pd.DataFrame(
-            #             {"CodigoLiquidacion": sorted(list(codigos_duplicados))}
-            #         ).to_excel(writer, sheet_name="Codigos_Duplicados", index=False)
-
-            #         # Hoja 3: Registros completos - DENTRO del sistema (que serán eliminados)
-            #         if not df_duplicados_dentro.empty:
-            #             df_duplicados_dentro.to_excel(
-            #                 writer,
-            #                 sheet_name="Registros_DENTRO_Eliminados",
-            #                 index=False,
-            #             )
-
-            #         # Hoja 4: Registros completos - FUERA del sistema (que se mantendrán)
-            #         if not df_duplicados_fuera.empty:
-            #             df_duplicados_fuera.to_excel(
-            #                 writer, sheet_name="Registros_FUERA_Mantenidos", index=False
-            #             )
-
-            #         # Hoja 5: Comparación lado a lado por código
-            #         comparacion_data = []
-            #         for codigo in sorted(codigos_duplicados):
-            #             dentro_reg = df_duplicados_dentro[
-            #                 df_duplicados_dentro["CodigoLiquidacion"].astype(str)
-            #                 == codigo
-            #             ]
-            #             fuera_reg = df_duplicados_fuera[
-            #                 df_duplicados_fuera["CodigoLiquidacion"].astype(str)
-            #                 == codigo
-            #             ]
-
-            #             comparacion_data.append(
-            #                 {
-            #                     "CodigoLiquidacion": codigo,
-            #                     "Registros_Dentro": len(dentro_reg),
-            #                     "Registros_Fuera": len(fuera_reg),
-            #                     "FechaOperacion_Dentro": (
-            #                         dentro_reg["FechaOperacion"].iloc[0]
-            #                         if not dentro_reg.empty
-            #                         else None
-            #                     ),
-            #                     "FechaOperacion_Fuera": (
-            #                         fuera_reg["FechaOperacion"].iloc[0]
-            #                         if not fuera_reg.empty
-            #                         else None
-            #                     ),
-            #                     "NetoConfirmado_Dentro": (
-            #                         dentro_reg["NetoConfirmado"].iloc[0]
-            #                         if not dentro_reg.empty
-            #                         else None
-            #                     ),
-            #                     "NetoConfirmado_Fuera": (
-            #                         fuera_reg["NetoConfirmado"].iloc[0]
-            #                         if not fuera_reg.empty
-            #                         else None
-            #                     ),
-            #                     "Ejecutivo_Dentro": (
-            #                         dentro_reg["Ejecutivo"].iloc[0]
-            #                         if not dentro_reg.empty
-            #                         else None
-            #                     ),
-            #                     "Ejecutivo_Fuera": (
-            #                         fuera_reg["Ejecutivo"].iloc[0]
-            #                         if not fuera_reg.empty
-            #                         else None
-            #                     ),
-            #                 }
-            #             )
-
-            #         pd.DataFrame(comparacion_data).to_excel(
-            #             writer, sheet_name="Comparacion_Detallada", index=False
-            #         )
-
-            #     logger.info(f"✅ Archivo de auditoría generado: {filename}")
-            #     logger.info(
-            #         f"📊 Contiene {len(codigos_duplicados)} códigos duplicados para revisión"
-            #     )
-
-            # except Exception as excel_error:
-            #     logger.warning(f"⚠️ Error generando Excel de auditoría: {excel_error}")
-            #     # No interrumpir el flujo principal por errores de Excel
 
             # Eliminar de df_main los códigos que también están en df_out
             df_main = df_main[
                 ~df_main["CodigoLiquidacion"].astype(str).isin(codigos_duplicados)
             ]
 
-            logger.info(
+            logger.warning(
                 f"Registros restantes en dataset interno después de limpieza: {len(df_main)}"
             )
 
@@ -297,14 +178,7 @@ class KPICalcular(BaseCalcular):
         mapping = self._map_executivos(df_main, df_out)
         df_out["Ejecutivo"] = df_out["Ejecutivo"].map(mapping)
 
-        # Concatenar datasets ya limpios
-        resultado = pd.concat([df_main, df_out], ignore_index=True)
-
-        logger.info(f"Dataset final fusionado: {len(resultado)} registros")
-        logger.info(f"Registros fuera del sistema: {len(df_out)}")
-        logger.info(
-            f"Registros dentro del sistema (después de limpieza): {len(df_main)}"
-        )
+        resultado = pd.concat([df_main, df_out], ignore_index=True, sort=False)
 
         return resultado
 
@@ -339,13 +213,22 @@ class KPICalcular(BaseCalcular):
                 df[col] = df[col].dt.normalize()
         return df
 
-    def _formatear_campos(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _formatear_campos(
+        self, df: pd.DataFrame, aplicar_formateo_fechas_legacy: bool = True
+    ) -> pd.DataFrame:
         """Convierte tipos, fechas, limpia strings y crea columnas auxiliares."""
         df = df.copy()
-        # FECHAS: dd/mm/YYYY
-        # df = self._convertir_fechas(
-        #     df, ["FechaOperacion", "FechaConfirmado", "FechaDesembolso"], "%d/%m/%Y"
-        # )
+
+        # FECHAS: Convertir fechas que vienen como strings del webservice
+        # Este formateo es opcional para compatibilidad con CXCETLProcessor
+        if aplicar_formateo_fechas_legacy:
+            columnas_fecha = ["FechaOperacion", "FechaConfirmado", "FechaDesembolso"]
+            for col in columnas_fecha:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+                    if df[col].dt.tz is not None:
+                        df[col] = df[col].dt.tz_localize(None)
+                    df[col] = df[col].dt.normalize()
 
         # Strings y códigos
         df["RUCCliente"] = df["RUCCliente"].astype(str).str.strip()
@@ -364,15 +247,19 @@ class KPICalcular(BaseCalcular):
             df["NroDocumento"].astype(str).str.replace(r"\s+", "", regex=True)
         )
 
-        # Tasas
+        # Tasas - CORREGIDO para manejar strings del webservice
+        df["TasaNominalMensualPorc"] = pd.to_numeric(
+            df["TasaNominalMensualPorc"], errors="coerce"
+        ).fillna(0)
         df["TasaNominalMensualPorc"] = df["TasaNominalMensualPorc"].apply(
             lambda x: x / 100 if x >= 1 else x
         )
 
-        # Mes/Año
-        df["Mes"] = df["FechaOperacion"].dt.strftime("%Y-%m")
-        df["Año"] = df["FechaOperacion"].dt.year.astype(str)
-        df["MesAño"] = df["FechaOperacion"].dt.strftime("%B-%Y")
+        # Mes/Año - Solo si FechaOperacion existe y no es null
+        if "FechaOperacion" in df.columns and not df["FechaOperacion"].isna().all():
+            df["Mes"] = df["FechaOperacion"].dt.strftime("%Y-%m")
+            df["Año"] = df["FechaOperacion"].dt.year.astype(str)
+            df["MesAño"] = df["FechaOperacion"].dt.strftime("%B-%Y")
 
         return df
 
@@ -382,9 +269,44 @@ class KPICalcular(BaseCalcular):
         calcula ingresos, costos y utilidades.
         """
         df = df.copy()
+
+        # CONVERTIR COLUMNAS NUMÉRICAS QUE VIENEN COMO STRINGS DEL WEBSERVICE
+        columnas_numericas = [
+            "NetoConfirmado",
+            "MontoDesembolso",
+            "MontoPago",
+            "ComisionEstructuracionConIGV",
+            "Interes",
+            "GastosDiversosConIGV",
+            "DiasEfectivo",
+            "TipoCambioVenta",
+        ]
+        for col in columnas_numericas:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+        # CORREGIR TIPOS DE FECHA PARA MERGE - Convertir TipoCambioFecha a datetime
+        tipo_cambio_df_temp = self.tipo_cambio_df.copy()
+        if "TipoCambioFecha" in tipo_cambio_df_temp.columns:
+            tipo_cambio_df_temp["TipoCambioFecha"] = pd.to_datetime(
+                tipo_cambio_df_temp["TipoCambioFecha"], errors="coerce"
+            )
+
+        # Convertir columnas numéricas del tipo_cambio_df también
+        if "TipoCambioVenta" in tipo_cambio_df_temp.columns:
+            tipo_cambio_df_temp["TipoCambioVenta"] = pd.to_numeric(
+                tipo_cambio_df_temp["TipoCambioVenta"], errors="coerce"
+            ).fillna(
+                1
+            )  # Default 1 para evitar divisiones por 0
+        if "TipoCambioCompra" in tipo_cambio_df_temp.columns:
+            tipo_cambio_df_temp["TipoCambioCompra"] = pd.to_numeric(
+                tipo_cambio_df_temp["TipoCambioCompra"], errors="coerce"
+            ).fillna(1)
+
         # Merge tipo de cambio
         df = df.merge(
-            self.tipo_cambio_df,
+            tipo_cambio_df_temp,
             left_on="FechaOperacion",
             right_on="TipoCambioFecha",
             how="left",
@@ -422,17 +344,35 @@ class KPICalcular(BaseCalcular):
         df["TotalIngresosSoles"] = df["TotalIngresos"] * factor
         df["Utilidad"] = df["TotalIngresosSoles"] - df["CostosFondoSoles"]
 
-        # Semana del mes
-        df["MesSemana"] = (
-            df["FechaOperacion"]
-            .apply(self._week_of_month)
-            .apply(lambda w: f"Semana {w}")
-        )
+        # Semana del mes - Solo si hay fechas válidas
+        if "FechaOperacion" in df.columns and not df["FechaOperacion"].isna().all():
+            df["MesSemana"] = (
+                df["FechaOperacion"]
+                .apply(self._week_of_month)
+                .apply(lambda w: f"Semana {w}")
+            )
+        else:
+            # Si no hay fechas válidas, asignar semana por defecto
+            df["MesSemana"] = "Semana 1"
         return df
 
     @staticmethod
-    def _week_of_month(dt: datetime) -> int:
-        """Calcula número de semana dentro del mes."""
-        first = dt.replace(day=1)
-        dom = dt.day + first.weekday()
-        return math.ceil(dom / 7)
+    def _week_of_month(dt) -> int:
+        """Calcula número de semana dentro del mes. Maneja valores NaT/None."""
+        # Manejar valores nulos o NaT
+        if pd.isna(dt) or dt is None:
+            return 1  # Default a semana 1 si la fecha es nula
+
+        # Convertir a datetime si es necesario
+        if isinstance(dt, str):
+            try:
+                dt = pd.to_datetime(dt)
+            except Exception:
+                return 1
+
+        try:
+            first = dt.replace(day=1)
+            dom = dt.day + first.weekday()
+            return math.ceil(dom / 7)
+        except (AttributeError, ValueError, TypeError):
+            return 1  # Default a semana 1 si hay cualquier error

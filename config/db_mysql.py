@@ -61,7 +61,7 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager(
     str(settings.DATABASE_MYSQL_URL),
     {
-        "echo": True,
+        "echo": False,
         "future": True,
         "pool_size": 100,
         "max_overflow": 20,

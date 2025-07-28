@@ -2,7 +2,7 @@ from .BaseCalcular import BaseCalcular
 from .SectorPagadoresCalcular import SectorPagadoresCalcular
 import pandas as pd
 import numpy as np
-from datetime import datetime, date
+from datetime import datetime
 from config.logger import logger
 from ..obtener.CXCAcumuladoDIMObtener import CXCAcumuladoDIMObtener
 from ..schemas.CXCAcumuladoDIMCalcularSchema import (
@@ -480,23 +480,10 @@ class CXCAcumuladoDIMCalcular(BaseCalcular):
         Esto resuelve el problema de tipos de datos desde el principio.
         """
         try:
-            datos_validados = []
-            errores_validacion = []
-
-            for i, registro in enumerate(data):
-                try:
-                    # Validar con el schema RAW que convierte tipos automáticamente
-                    registro_validado = CXCAcumuladoDIMRawSchema(**registro)
-                    datos_validados.append(registro_validado.model_dump())
-                except Exception as e:
-                    errores_validacion.append(f"Registro {i}: {str(e)}")
-
-            if errores_validacion:
-                logger.warning(
-                    f"Se encontraron {len(errores_validacion)} errores de validación RAW"
-                )
-                for error in errores_validacion[:3]:  # Log solo los primeros 3 errores
-                    logger.warning(f"Error validación RAW: {error}")
+            # 🚀 OPTIMIZACIÓN: List comprehension directo sin for/enumerate
+            datos_validados = [
+                CXCAcumuladoDIMRawSchema(**registro).model_dump() for registro in data
+            ]
 
             logger.info(
                 f"Validación RAW: {len(datos_validados)}/{len(data)} registros válidos"
@@ -514,30 +501,17 @@ class CXCAcumuladoDIMCalcular(BaseCalcular):
             logger.error(f"Error crítico en validación RAW: {e}")
             raise e
 
+    @BaseCalcular.timeit
     def validar_datos(self, data: list[dict]) -> list[dict]:
         """
         Valida los datos usando el schema actualizado con validación robusta.
         """
         try:
-            datos_validados = []
-            errores_validacion = []
-
-            for i, registro in enumerate(data):
-                try:
-                    registro_validado = CXCAcumuladoDIMCalcularSchema(**registro)
-                    datos_validados.append(registro_validado.model_dump())
-                except Exception as e:
-                    errores_validacion.append(f"Registro {i}: {str(e)}")
-
-            if errores_validacion:
-                logger.warning(
-                    f"Se encontraron {len(errores_validacion)} errores de validación"
-                )
-                for error in errores_validacion[:5]:  # Log solo los primeros 5 errores
-                    logger.warning(f"Error validación: {error}")
-
-                if len(errores_validacion) > 5:
-                    logger.warning(f"... y {len(errores_validacion) - 5} errores más")
+            # 🚀 OPTIMIZACIÓN: List comprehension directo sin for/enumerate
+            datos_validados = [
+                CXCAcumuladoDIMCalcularSchema(**registro).model_dump()
+                for registro in data
+            ]
 
             logger.info(
                 f"Validación completada: {len(datos_validados)}/{len(data)} registros válidos"

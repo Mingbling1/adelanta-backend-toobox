@@ -37,6 +37,7 @@ class Container(containers.DeclarativeContainer):
             "cronjobs.datamart.ActualizarTablaRetomaCronjob",
             "cronjobs.datamart.ActualizarTablasReportesCronjob",
             "cronjobs.datamart.ActualizarTablasCXCCronjob",
+            "cronjobs.datamart.ActualizarCXCETLCronjob",
         ]
     )
 

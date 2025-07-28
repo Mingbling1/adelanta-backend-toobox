@@ -124,11 +124,66 @@ class CXCAcumuladoDIMModel(BaseModel):
     )
     Ejecutivo: Mapped[str] = mapped_column("Ejecutivo", String(200), nullable=False)
 
-    # === COLUMNAS ETL CALCULADAS ===
-    SaldoTotal: Mapped[float] = mapped_column("SaldoTotal", Numeric(18, 2), nullable=False)
-    SaldoTotalPen: Mapped[float] = mapped_column("SaldoTotalPen", Numeric(18, 2), nullable=False)
-    TipoPagoReal: Mapped[str] = mapped_column("TipoPagoReal", String(50), nullable=False)
-    EstadoCuenta: Mapped[str] = mapped_column("EstadoCuenta", String(20), nullable=False)
+    # === COLUMNAS ETL CALCULADAS ORIGINALES ===
+    SaldoTotal: Mapped[float] = mapped_column(
+        "SaldoTotal", Numeric(18, 2), nullable=False
+    )
+    SaldoTotalPen: Mapped[float] = mapped_column(
+        "SaldoTotalPen", Numeric(18, 2), nullable=False
+    )
+    TipoPagoReal: Mapped[str] = mapped_column(
+        "TipoPagoReal", String(50), nullable=False
+    )
+    EstadoCuenta: Mapped[str] = mapped_column(
+        "EstadoCuenta", String(20), nullable=False
+    )
     EstadoReal: Mapped[str] = mapped_column("EstadoReal", String(50), nullable=False)
     Sector: Mapped[str] = mapped_column("Sector", String(200), nullable=True)
     GrupoEco: Mapped[str] = mapped_column("GrupoEco", String(200), nullable=True)
+
+    # === COLUMNAS ADICIONALES PARA ETL KPI ===
+    # Campos de fecha y control
+    Mes: Mapped[str] = mapped_column("Mes", String(10), nullable=True)
+    Año: Mapped[str] = mapped_column("Año", String(4), nullable=True)
+    MesAño: Mapped[str] = mapped_column("MesAño", String(20), nullable=True)
+    MesSemana: Mapped[str] = mapped_column("MesSemana", String(20), nullable=True)
+
+    # Campos de tipo de cambio
+    TipoCambioFecha: Mapped[Date] = mapped_column(
+        "TipoCambioFecha", Date, nullable=True
+    )
+    TipoCambioCompra: Mapped[float] = mapped_column(
+        "TipoCambioCompra", Numeric(18, 6), nullable=True
+    )
+    TipoCambioVenta: Mapped[float] = mapped_column(
+        "TipoCambioVenta", Numeric(18, 6), nullable=True
+    )
+
+    # Campos calculados financieros
+    ColocacionSoles: Mapped[float] = mapped_column(
+        "ColocacionSoles", Numeric(18, 2), nullable=True
+    )
+    MontoDesembolsoSoles: Mapped[float] = mapped_column(
+        "MontoDesembolsoSoles", Numeric(18, 2), nullable=True
+    )
+    Ingresos: Mapped[float] = mapped_column("Ingresos", Numeric(18, 2), nullable=True)
+    IngresosSoles: Mapped[float] = mapped_column(
+        "IngresosSoles", Numeric(18, 2), nullable=True
+    )
+    CostosFondo: Mapped[float] = mapped_column(
+        "CostosFondo", Numeric(18, 2), nullable=True
+    )
+    TotalIngresos: Mapped[float] = mapped_column(
+        "TotalIngresos", Numeric(18, 2), nullable=True
+    )
+    CostosFondoSoles: Mapped[float] = mapped_column(
+        "CostosFondoSoles", Numeric(18, 2), nullable=True
+    )
+    TotalIngresosSoles: Mapped[float] = mapped_column(
+        "TotalIngresosSoles", Numeric(18, 2), nullable=True
+    )
+    Utilidad: Mapped[float] = mapped_column("Utilidad", Numeric(18, 2), nullable=True)
+
+    # Campos de control y clasificación
+    FueraSistema: Mapped[str] = mapped_column("FueraSistema", String(10), nullable=True)
+    Referencia: Mapped[str] = mapped_column("Referencia", String(200), nullable=True)
