@@ -8,7 +8,7 @@ Utiliza list comprehensions optimizadas para validación masiva de datos.
 import pandas as pd
 from typing import List, Dict, Tuple
 from config.logger import logger
-from ..schemas.referidos import ReferidosCalcularSchema, ReferidosProcessedSchema
+from ..schemas.referidos_schema import ReferidosCalcularSchema, ReferidosProcessedSchema
 
 
 class ReferidosValidationEngine:

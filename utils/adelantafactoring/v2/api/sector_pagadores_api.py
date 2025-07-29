@@ -5,10 +5,10 @@ API layer para compatibilidad con SectorPagadoresCalcular original
 from typing import List, Dict, Any
 
 from ..engines.sector_pagadores_engine import SectorPagadoresEngine
-from ..schemas.sector_pagadores import SectorPagadoresRequest, SectorPagadoresResult
+from ..schemas.sector_pagadores_schema import SectorPagadoresRequest, SectorPagadoresResult
 
 
-class SectorPagadoresCalcularV2:
+class SectorPagadoresAPI:
     """
     Wrapper de compatibilidad para mantener API original de SectorPagadoresCalcular
     """

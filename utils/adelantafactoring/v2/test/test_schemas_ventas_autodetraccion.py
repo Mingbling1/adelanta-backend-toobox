@@ -1,20 +1,23 @@
 """
-🧪 Test VentasAutodetracciones V2 - Simple y aislado
+🧪 Test de Schemas VentasAutodetraccion V2
 """
 
+import sys
+import os
+import pandas as pd
+from datetime import datetime
 
-def test_ventas_autodetraccion_v2_basic():
-    """Test básico para VentasAutodetracciones V2"""
-    import sys
-    import os
-    import pandas as pd
+# Agregar el path correcto para importar
+test_dir = os.path.dirname(__file__)
+v2_dir = os.path.dirname(test_dir)
+if v2_dir not in sys.path:
+    sys.path.insert(0, v2_dir)
 
-    # Path V2
-    v2_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    if v2_path not in sys.path:
-        sys.path.insert(0, v2_path)
 
-    # Test de schemas V2
+def test_ventas_autodetraccion_schemas():
+    """Test de schemas VentasAutodetraccion V2"""
+
+    # Import local
     from utils.adelantafactoring.v2.schemas.ventas_autodetraccion_schema import (
         VentasAutodetraccionesRequest,
         VentasAutodetraccionesResult,
@@ -70,4 +73,8 @@ def test_ventas_autodetraccion_v2_basic():
     assert result.hasta == "2024-01"
     assert result.total_autodetraccion == 500.0
 
-    print("✅ VentasAutodetracciones V2: PASSED")
+    print("✅ VentasAutodetraccion Schemas V2: PASSED")
+
+
+if __name__ == "__main__":
+    test_ventas_autodetraccion_schemas()

@@ -5,11 +5,10 @@ from fastapi import Depends, UploadFile
 import pandas as pd
 from utils.decorators import create_job
 from io import BytesIO
-from models.datamart.TipoCambioModel import TipoCambioModel
 from config.logger import logger
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
-from utils.adelantafactoring.calculos.VentasAutodetraccionesCalcular import (
-    VentasAutodetraccionesCalcular,
+from utils.adelantafactoring.v2.api.ventas_autodetraccion_api import (
+    VentasAutodetraccionesAPI,
 )
 
 
@@ -30,7 +29,7 @@ class VentasAutodetraccionesService:
         en formato "YYYY-MM". Lee el archivo, obtiene el DataFrame de tipo de cambio
         y luego genera el Excel filtrado por ese mes.
         """
-        logger.debug(f"Archivo recibido: {file.filename}")
+        logger.warning(f"Archivo recibido: {file.filename}")
         # Leer contenido del archivo
         data = await file.read()
         persistente_file = BytesIO(data)
@@ -47,17 +46,14 @@ class VentasAutodetraccionesService:
         async def obtener_ventas_autodetracciones(
             hasta: str, persistente_file: BytesIO, archivo_nombre: str
         ) -> BytesIO:
-            # Obtener los registros de tipo cambio
-            tipo_cambio_records: list[TipoCambioModel] = (
-                await self.tipo_cambio_repository.get_all(limit=None, offset=0)
-            )
+
             tipo_cambio_df = pd.DataFrame(
-                [record.to_dict() for record in tipo_cambio_records]
+                await self.tipo_cambio_repository.get_all_dicts(exclude_pk=True)
             )
             # Leer el archivo de comprobantes (por ejemplo, un Excel)
             comprobantes_df = pd.read_excel(persistente_file, skiprows=2)
             # Instanciar la clase de cálculo pasándole los DataFrames necesarios
-            calculador = VentasAutodetraccionesCalcular(
+            calculador = VentasAutodetraccionesAPI(
                 tipo_cambio_df=tipo_cambio_df, comprobantes_df=comprobantes_df
             )
             # Generar el Excel filtrado por 'hasta' (YYYY-MM)

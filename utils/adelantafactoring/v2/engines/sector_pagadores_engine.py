@@ -5,7 +5,7 @@ Motor de cálculo para sector pagadores
 import pandas as pd
 from typing import List, Dict
 
-from ..schemas.sector_pagadores import (
+from ..schemas.sector_pagadores_schema import (
     SectorPagadoresRequest,
     SectorPagadoresResult,
     SectorPagadorRecord,

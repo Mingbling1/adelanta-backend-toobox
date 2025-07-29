@@ -2,7 +2,7 @@
 🏦 Schemas para CXC Pagos Fact - Validación Pydantic con precisión financiera
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import date, datetime
 from typing import Optional
 from decimal import Decimal
@@ -200,7 +200,7 @@ class CXCPagosFactBaseSchema(BaseModel):
 
         return None
 
-    class Config:
+    model_config = ConfigDict(arbitrary_types_allowed=True) #
         # Habilitar validación estricta
         validate_assignment = True
         # Preservar decimales

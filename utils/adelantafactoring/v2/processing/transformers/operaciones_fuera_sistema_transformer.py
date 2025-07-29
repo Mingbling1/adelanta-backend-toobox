@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 from config import logger
-from ...schemas.operaciones_fuera_sistema import OperacionesFueraSistemaProcessedSchema
+from ...schemas.operaciones_fuera_sistema_schema import OperacionesFueraSistemaProcessedSchema
 
 
 class OperacionesFueraSistemaTransformer:

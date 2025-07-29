@@ -10,7 +10,7 @@ from typing import Union, List, Dict, Tuple
 from config.logger import logger
 from ...engines.referidos_data_engine import ReferidosDataEngine
 from ...engines.referidos_validation_engine import ReferidosValidationEngine
-from ...schemas.referidos import ReferidosProcessedSchema
+from ...schemas.referidos_schema import ReferidosProcessedSchema
 
 
 class ReferidosTransformer:

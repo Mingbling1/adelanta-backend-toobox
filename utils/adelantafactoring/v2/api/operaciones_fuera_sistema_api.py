@@ -15,14 +15,14 @@ from ..engines.data.operaciones_fuera_sistema import OperacionesFueraSistemaData
 from ..engines.validation.operaciones_fuera_sistema import (
     OperacionesFueraSistemaValidationEngine,
 )
-from ..processing.transformers.operaciones_fuera_sistema import (
+from ..processing.transformers.operaciones_fuera_sistema_transformer import (
     OperacionesFueraSistemaTransformer,
 )
-from ..schemas.operaciones_fuera_sistema import OperacionesFueraSistemaProcessedSchema
+from ..schemas.operaciones_fuera_sistema_schema import OperacionesFueraSistemaProcessedSchema
 from ..core.base import BaseCalcularV2
 
 
-class OperacionesFueraSistemaCalcular(BaseCalcularV2):
+class OperacionesFueraSistemaAPI(BaseCalcularV2):
     """
     🎯 API Principal V2 para Operaciones Fuera del Sistema.
 
@@ -271,4 +271,4 @@ class OperacionesFueraSistemaCalcular(BaseCalcularV2):
 
 
 # Instancia global para compatibilidad legacy
-operaciones_fuera_sistema_calcular = OperacionesFueraSistemaCalcular()
+operaciones_fuera_sistema_calcular = OperacionesFueraSistemaAPI()

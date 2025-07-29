@@ -5,7 +5,7 @@ Schemas optimizados para el sistema de referidos con validación RUST-powered.
 Mantiene compatibilidad completa con el sistema legacy.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import List
 
@@ -39,11 +39,7 @@ class ReferidosBaseSchema(BaseModel):
             raise ValueError("Campo de texto no puede estar vacío")
         return v.strip()
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None,
-        }
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ReferidosCalcularSchema(ReferidosBaseSchema):
@@ -66,8 +62,7 @@ class ReferidosRawSchema(BaseModel):
     EJECUTIVO: str = Field(..., alias="ejecutivo")
     MES: str = Field(..., alias="mes")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ReferidosProcessedSchema(BaseModel):
@@ -81,5 +76,4 @@ class ReferidosProcessedSchema(BaseModel):
     duplicates_removed: int = Field(default=0, description="Duplicados eliminados")
     processing_timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

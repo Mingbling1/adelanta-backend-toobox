@@ -7,10 +7,10 @@ import pandas as pd
 from io import BytesIO
 
 from ..engines.ventas_autodetraccion_engine import VentasAutodetraccionesEngine
-from ..schemas.ventas_autodetraccion import VentasAutodetraccionesRequest
+from ..schemas.ventas_autodetraccion_schema import VentasAutodetraccionesRequest
 
 
-class VentasAutodetraccionesCalcular:
+class VentasAutodetraccionesAPI:
     """
     Fachada que mantiene compatibilidad con la interfaz original de VentasAutodetraccionesCalcular
     Delega el procesamiento al motor de cálculo hexagonal

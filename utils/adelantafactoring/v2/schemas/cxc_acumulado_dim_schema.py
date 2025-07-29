@@ -4,7 +4,7 @@ Preserva integridad de datos financieros para CXC acumulado dimensional
 Schema complejo con múltiples campos financieros y dimensionales
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import date, datetime
 from typing import Optional
 from decimal import Decimal
@@ -248,8 +248,7 @@ class CXCAcumuladoDIMRawSchema(BaseModel):
 
         raise ValueError(f"Tipo de fecha no soportado: {type(v)}")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True) #
         json_encoders = {
             date: lambda v: v.isoformat() if v else None,
             Decimal: lambda v: float(v) if v else None,
@@ -305,8 +304,7 @@ class CXCAcumuladoDIMCalcularSchema(BaseModel):
         None, description="Fondo resguardo en soles"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True) #
         json_encoders = {
             date: lambda v: v.isoformat() if v else None,
             Decimal: lambda v: float(v) if v else None,

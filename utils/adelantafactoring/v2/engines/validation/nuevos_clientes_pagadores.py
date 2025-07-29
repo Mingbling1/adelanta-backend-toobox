@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from config.logger import logger
 from ...core.base import BaseCalcularV2
-from ...schemas.nuevos_clientes_pagadores import (
+from ...schemas.nuevos_clientes_pagadores_schema import (
     NuevosClientesNuevosPagadoresRequestSchema,
     NuevosClientesNuevosPagadoresResponseSchema,
     ProcessingMetadata,

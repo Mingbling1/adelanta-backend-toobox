@@ -7,7 +7,7 @@ import numpy as np
 from io import BytesIO
 import asyncio
 
-from ..schemas.ventas_autodetraccion import (
+from ..schemas.ventas_autodetraccion_schema import (
     VentasAutodetraccionesRequestSchema,
     VentasAutodetraccionesResponseSchema,
     VentasAutodetraccionesRequest,

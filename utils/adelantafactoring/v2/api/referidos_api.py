@@ -9,7 +9,7 @@ import pandas as pd
 from typing import Union, List, Dict, Tuple
 from config.logger import logger
 from ..processing.transformers.referidos_transformer import ReferidosTransformer
-from ..schemas.referidos import ReferidosProcessedSchema
+from ..schemas.referidos_schema import ReferidosProcessedSchema
 
 
 class ReferidosAPI:

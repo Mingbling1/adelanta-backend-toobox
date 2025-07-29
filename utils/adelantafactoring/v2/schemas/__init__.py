@@ -6,7 +6,7 @@ from .kpi_schema import (
     KPICalcularSchema,
     KPIAcumuladoCalcularSchema,
 )
-from .ventas_autodetraccion import (
+from .ventas_autodetraccion_schema import (
     VentasAutodetraccionesRequest,
     VentasAutodetraccionesResult,
     RegistroVenta,

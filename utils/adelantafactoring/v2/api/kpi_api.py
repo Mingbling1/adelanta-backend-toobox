@@ -9,7 +9,7 @@ from config.logger import logger
 from ..processing.transformers.kpi_transformer import KPITransformer
 
 
-class KPIV2:
+class KPIAPI:
     """
     Interfaz pública simplificada para cálculos KPI v2
     Mantiene compatibilidad con la API original
@@ -130,7 +130,7 @@ async def calculate_kpi_v2(
     Returns:
         Datos KPI calculados y validados
     """
-    kpi_api = KPIV2(tipo_cambio_df)
+    kpi_api = KPIAPI(tipo_cambio_df)
     return await kpi_api.calculate_monthly(
         start_date, end_date, fecha_corte, tipo_reporte, as_df
     )

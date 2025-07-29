@@ -5,7 +5,7 @@ Schemas optimizados para operaciones financieras fuera del sistema con validaciÃ
 Mantiene compatibilidad completa con el sistema legacy y maneja datos PEN/USD.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import datetime, date
 from typing import List, Optional, Union
 
@@ -176,11 +176,7 @@ class OperacionesFueraSistemaBaseSchema(BaseModel):
         except Exception:
             return None
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            date: lambda v: v.isoformat() if v else None,
-        }
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class OperacionesFueraSistemaCalcularSchema(OperacionesFueraSistemaBaseSchema):
@@ -222,8 +218,7 @@ class OperacionesFueraSistemaRawSchema(BaseModel):
     Ejecutivo: Optional[str] = Field(None, alias="EJECUTIVO")
     TipoOperacion: Optional[str] = Field(None, alias="TIPO DE OPERACIÃ“N")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)  #
 
 
 class OperacionesFueraSistemaProcessedSchema(BaseModel):
@@ -240,5 +235,4 @@ class OperacionesFueraSistemaProcessedSchema(BaseModel):
     )
     processing_timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)  #

@@ -3,6 +3,6 @@ from repositories.BaseRepository import BaseRepository
 from config.db_mysql import DB
 
 
-class KPIAcumuladoRepository(BaseRepository):
+class KPIAcumuladoRepository(BaseRepository[KPIAcumuladoModel]):
     def __init__(self, db: DB) -> None:
         super().__init__(KPIAcumuladoModel, db)

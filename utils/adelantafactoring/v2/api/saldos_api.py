@@ -6,10 +6,10 @@ from typing import Dict, List, Union
 import asyncio
 
 from ..engines.saldos_engine import SaldosEngine
-from ..schemas.saldos import SaldosRequest
+from ..schemas.saldos_schema import SaldosRequest
 
 
-class SaldosCalcularV2:
+class SaldosAPI:
     """
     API de compatibilidad para mantener la interfaz original de SaldosCalcular
     """

@@ -12,12 +12,12 @@ from ..core.base import BaseCalcularV2
 from ..processing.nuevos_clientes_pagadores import (
     NuevosClientesNuevosPagadoresTransformer,
 )
-from ..schemas.nuevos_clientes_pagadores import (
+from ..schemas.nuevos_clientes_pagadores_schema import (
     NuevosClientesNuevosPagadoresResponseSchema,
 )
 
 
-class NuevosClientesNuevosPagadoresCalcularV2(BaseCalcularV2):
+class NuevosClientesNuevosPagadoresAPI(BaseCalcularV2):
     """
     🎯 Calculator V2 para análisis de nuevos clientes y pagadores.
 
@@ -269,7 +269,7 @@ class NuevosClientesNuevosPagadoresCalcularV2(BaseCalcularV2):
     @classmethod
     def create_from_dataframe(
         cls, df: pd.DataFrame
-    ) -> "NuevosClientesNuevosPagadoresCalcularV2":
+    ) -> "NuevosClientesNuevosPagadoresAPI":
         """
         🏭 Factory method para crear calculator desde DataFrame.
 

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import pandas as pd
 from utils.adelantafactoring.v2.io.retomas_data_source import RetomasDataSource
 from utils.adelantafactoring.v2.engines.retomas_engine import RetomasEngine
-from utils.adelantafactoring.v2.schemas.retomas import (
+from utils.adelantafactoring.v2.schemas.retomas_schema import (
     RetomasCalcularRequest,
     RetomasCalcularResponse,
     RetomasCalcularListResponse

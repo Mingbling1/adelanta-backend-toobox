@@ -1,11 +1,10 @@
 from repositories.datamart.RetomasRepository import RetomasRepository
 from fastapi import Depends
-from utils.adelantafactoring.calculos.RetomasCalcular import RetomasCalcular
+from utils.adelantafactoring.v2.api.retomas_api import RetomasAPI
 from datetime import datetime
 from repositories.datamart.KPIAcumuladoRepository import KPIAcumuladoRepository
 import pandas as pd
 from utils.decorators import create_job
-from models.datamart.KPIAcumuladoModel import KPIAcumuladoModel
 from io import BytesIO
 import asyncio
 
@@ -23,7 +22,6 @@ class RetomasService:
         )
 
         self.actualizar_tabla_retoma_cronjob = ActualizarTablaRetomaCronjob()
-        # self.retomas_calcular = RetomasCalcular()
 
     async def create_many(self, input: list[dict]):
         await self.retomas_repository.create_many(input)
@@ -40,16 +38,14 @@ class RetomasService:
         capture_params=True,
     )
     async def calcular_retomas(self, fecha_corte: datetime):
-        # Asegúrate de usar el repositorio correcto; aquí se usa kpi_acumulado_repository.
-        kpi_acumulado_records: list[KPIAcumuladoModel] = (
-            await self.kpi_acumulado_repository.get_all(limit=None, offset=0)
+        kpi_acumulado_df = pd.DataFrame(
+            await self.kpi_acumulado_repository.get_all_dicts(exclude_pk=True)
         )
-        kpi_acumulado_df = pd.DataFrame([record.to_dict() for record in kpi_acumulado_records])
 
-        # Crear la instancia de RetomasCalcular pasando el DataFrame
-        retomas_calcular = RetomasCalcular(kpi_acumulado_df)
-        resultado_retomas_calcular_df = await retomas_calcular.calcular_retomas_async(
-            fecha_corte, to_df=True
+        # Crear la instancia de RetomasAPI pasando el DataFrame
+        retomas_calcular = RetomasAPI(kpi_acumulado_df)
+        resultado_retomas_calcular_df = (
+            await retomas_calcular.calcular_retomas_raw_async(fecha_corte, to_df=True)
         )
         excel_buffer = BytesIO()
         await self.actualizar_tabla_retoma_cronjob.run(fecha_corte=fecha_corte)

@@ -2,7 +2,7 @@
 Schemas de dominio para cálculos de sector pagadores
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional
 
 
@@ -14,8 +14,7 @@ class SectorPagadoresRequest(BaseModel):
         default=False, description="Forzar actualización de datos"
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SectorPagadorRecord(BaseModel):
@@ -38,8 +37,7 @@ class SectorPagadoresResult(BaseModel):
         ..., description="Lista de grupos económicos únicos"
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SectorPagadoresCalcularSchema(BaseModel):

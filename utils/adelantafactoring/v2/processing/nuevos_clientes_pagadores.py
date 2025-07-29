@@ -15,7 +15,7 @@ from ..engines.data.nuevos_clientes_pagadores import (
 from ..engines.validation.nuevos_clientes_pagadores import (
     NuevosClientesNuevosPagadoresValidationEngine,
 )
-from ..schemas.nuevos_clientes_pagadores import (
+from ..schemas.nuevos_clientes_pagadores_schema import (
     NuevosClientesNuevosPagadoresResponseSchema,
 )
 

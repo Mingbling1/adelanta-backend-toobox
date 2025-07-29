@@ -4,12 +4,12 @@
 Esquemas de validación para ventas con autodetracción
 """
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 import json
 import re
+import pandas as pd
 from datetime import datetime
-from typing import Optional
-from io import BytesIO
+from typing import Optional, Any
 
 
 class VentasAutodetraccionesRequestSchema(BaseModel):
@@ -56,17 +56,7 @@ class VentasAutodetraccionesResponseSchema(BaseModel):
     hasta: str = Field(description="Período procesado")
     mensaje: str = Field(default="Cálculo completado exitosamente")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "excel_filename": "autodetraccion_2024-12.xlsx",
-                "registro_ventas_count": 150,
-                "autodetraccion_count": 45,
-                "total_autodetraccion": 8750.50,
-                "hasta": "2024-12",
-                "mensaje": "Cálculo completado exitosamente",
-            }
-        }
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 # Schemas adicionales para compatibilidad con V1
@@ -74,23 +64,20 @@ class VentasAutodetraccionesRequest(BaseModel):
     """Request para cálculo de autodetracción de ventas (V1 compatibility)"""
 
     hasta: str = Field(..., description="Formato YYYY-MM")
-    comprobantes_df: Optional[str] = Field(
-        None, description="DataFrame serializado con comprobantes"
+    comprobantes_df: pd.DataFrame = Field(
+        ..., description="DataFrame con comprobantes (pd.DataFrame)"
     )
-    tipo_cambio_df: Optional[str] = Field(
-        None, description="DataFrame serializado con tipo de cambio"
+    tipo_cambio_df: pd.DataFrame = Field(
+        ..., description="DataFrame con tipo de cambio (pd.DataFrame)"
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class VentasAutodetraccionesResult(BaseModel):
     """Resultado del cálculo de autodetracción de ventas (V1 compatibility)"""
 
-    excel_buffer: Optional[str] = Field(
-        None, description="Buffer del archivo Excel serializado"
-    )
+    excel_buffer: Any = Field(..., description="Buffer del archivo Excel (BytesIO)")
     registro_ventas_count: int = Field(
         ..., description="Cantidad de registros de ventas"
     )
@@ -102,8 +89,7 @@ class VentasAutodetraccionesResult(BaseModel):
         ..., description="Total de autodetracción calculada"
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RegistroVenta(BaseModel):
@@ -118,7 +104,6 @@ class RegistroVenta(BaseModel):
     monto_autodetraccion: Optional[float] = Field(
         None, description="Monto de autodetracción calculado"
     )
-    fecha_emision: datetime = Field(..., description="Fecha de emisión")
     tipo_comprobante: str = Field(..., description="Tipo de comprobante")
     comprobante: str = Field(..., description="Número de comprobante")
     documento: str = Field(..., description="Documento del cliente")

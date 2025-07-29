@@ -5,7 +5,7 @@ Motor de cálculo para saldos
 import pandas as pd
 from typing import List, Dict
 
-from ..schemas.saldos import (
+from ..schemas.saldos_schema import (
     SaldosRequest,
     SaldosResult,
     SaldoRecord,

@@ -5,7 +5,7 @@ Schemas optimizados para análisis de nuevos clientes y pagadores con validació
 Arquitectura hexagonal pura sin dependencias legacy.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import datetime, date
 from typing import List, Optional
 import math
@@ -100,11 +100,7 @@ class NuevosClientesNuevosPagadoresBaseSchema(BaseModel):
         except Exception:
             return None
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            date: lambda v: v.isoformat() if v else None,
-        }
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class NuevosClientesNuevosPagadoresCalcularSchema(
@@ -138,8 +134,7 @@ class NuevosClientesNuevosPagadoresProcessedSchema(BaseModel):
     )
     processing_timestamp: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)  #
 
 
 class ProcessingMetadata(BaseModel):
@@ -157,8 +152,7 @@ class ProcessingMetadata(BaseModel):
         default_factory=dict, description="Count por tipo de operación"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)  #
 
 
 class NuevosClientesNuevosPagadoresRequestSchema(BaseModel):
@@ -200,5 +194,4 @@ class NuevosClientesNuevosPagadoresResponseSchema(BaseModel):
         default=None, description="Errores encontrados durante el procesamiento"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)  #

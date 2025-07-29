@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Union
 from config.logger import logger
 from utils.adelantafactoring.v2.io.retomas_data_source import RetomasDataSource
-from utils.adelantafactoring.v2.schemas.retomas import RetomasCalcularResponse
+from utils.adelantafactoring.v2.schemas.retomas_schema import RetomasCalcularResponse
 
 
 class RetomasEngine:
