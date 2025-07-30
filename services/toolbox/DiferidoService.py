@@ -2,10 +2,14 @@ from repositories.toolbox.DiferidoRepository import DiferidoRepository
 from repositories.datamart.KPIRepository import KPIRepository
 from fastapi import Depends, UploadFile
 import pandas as pd
-from utils.adelantafactoring.calculos.diferido.DiferidoCalcular import DiferidoCalcular
+
+
+from utils.adelantafactoring.v2.api.diferido_api import (
+    DiferidoCalcularV2 as DiferidoCalcular,
+)
+
 from utils.decorators import create_job
 from io import BytesIO
-from models.datamart.KPIModel import KPIModel
 from config.logger import logger
 import asyncio
 
@@ -38,15 +42,15 @@ class DiferidoService:
         async def obtener_diferido(
             hasta, persistente_file, archivo_nombre: str
         ) -> BytesIO:
-            kpi_records: list[KPIModel] = await self.kpi_repository.get_all(
-                limit=None, offset=0
-            )
-            df_interno = pd.DataFrame([record.to_dict() for record in kpi_records])
-            logger.debug(f"DataFrame interno: {df_interno.head()}")
 
-            # Instanciar DiferidoCalcular usando el buffer persistente
+            kpi_df = pd.DataFrame(
+                await self.kpi_repository.get_all_dicts(exclude_pk=True)
+            )
+            logger.debug(f"DataFrame interno: {kpi_df.head()}")
+
+            # Instanciar DiferidoCalcular V2 (compatibilidad total con V1)
             diferido_calcular = DiferidoCalcular(
-                file_path_externo=persistente_file, df_interno=df_interno
+                file_buffer=persistente_file, df_interno=kpi_df
             )
             resultado = await diferido_calcular.calcular_diferido_async(hasta)
             # Convertir el DataFrame resultante a Excel de forma asíncrona

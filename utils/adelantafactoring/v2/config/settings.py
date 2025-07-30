@@ -2,12 +2,21 @@
 ⚙️ Configuración V2 - Settings centralizados para arquitectura hexagonal
 """
 
+import logging
+
 
 class V2Settings:
     """
     Configuración centralizada para v2
     Mantiene compatibilidad con v1 durante la transición
     """
+
+    # 🔧 Logger Configuration
+    @staticmethod
+    def logger(message: str) -> None:
+        """Logger callable para compatibilidad V1"""
+        _logger = logging.getLogger(__name__)
+        _logger.warning(message)
 
     # 🌐 Webservice Configuration
     WEBSERVICE_BASE_URL = "https://webservice.adelantafactoring.com"

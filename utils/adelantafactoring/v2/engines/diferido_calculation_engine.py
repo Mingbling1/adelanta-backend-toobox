@@ -1,33 +1,111 @@
 """
-⚙️ Engine V2 - Diferido Calculation Engine
-
-Motor especializado para cálculos de diferidos internos y comparaciones
+⚙️ Motor de Cálculo de Diferido - V2 Arquitectura Hexagonal
+Refactorización EXACTA de DiferidoCalcular, DiferidoInternoCalcular y DiferidoExternoCalcular
+Mantiene 100% compatibilidad con V1
 """
 
 import pandas as pd
 import asyncio
-from typing import Dict, List, Any, Tuple
+import re
 from datetime import datetime, timedelta
+from typing import Union
+from io import BytesIO
 from dateutil.relativedelta import relativedelta
 import numpy as np
-import re
+import openpyxl
+from openpyxl.utils import column_index_from_string, get_column_letter
 import locale
 
-# Fallback para desarrollo
 try:
-    from ..config.settings import settings
+    from utils.adelantafactoring.v2.config.settings import settings
 except ImportError:
-
+    # Fallback para desarrollo aislado
     class _FallbackSettings:
-        logger = print  # Fallback simple
+        @staticmethod
+        def logger(message: str) -> None:
+            print(f"[DiferidoCalculationEngine] {message}")
 
     settings = _FallbackSettings()
 
+# Set locale para compatibilidad V1
+try:
+    locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
+except Exception:
+    pass  # Ignorar si no está disponible
+
+# Diccionario para convertir abreviaturas a nombre completo en español (en minúsculas)
+MONTH_MAP = {
+    "ENE": "enero",
+    "FEB": "febrero",
+    "MAR": "marzo",
+    "ABR": "abril",
+    "MAY": "mayo",
+    "JUN": "junio",
+    "JUL": "julio",
+    "AGO": "agosto",
+    "SET": "septiembre",
+    "OCT": "octubre",
+    "NOV": "noviembre",
+    "DIC": "diciembre",
+}
+
+
+def convert_date_col(col: str) -> str:
+    """
+    Convierte una columna de fecha en el formato '2021AGO' (o variantes en mayúsculas/minúsculas)
+    a 'agosto-2021' - LÓGICA EXACTA V1
+    """
+    m = re.match(r"^(\d{4})([A-Za-z]+)$", col)
+    if m:
+        year = m.group(1)
+        month_abbr = m.group(2).upper()
+        month_full = MONTH_MAP.get(month_abbr, month_abbr.lower())
+        return f"{month_full}-{year}"
+    return col
+
+
+def reorder_date_columns(date_cols: list[str]) -> list[str]:
+    """
+    Recibe una lista de columnas de fecha ya convertidas con formato 'mes-YYYY'
+    y las retorna ordenadas cronológicamente - LÓGICA EXACTA V1
+    """
+
+    def sort_key(col: str):
+        try:
+            # separa por guión: ej: "enero-2023"
+            month_str, year_str = col.split("-")
+            year = int(year_str)
+            months_order = [
+                "enero",
+                "febrero",
+                "marzo",
+                "abril",
+                "mayo",
+                "junio",
+                "julio",
+                "agosto",
+                "septiembre",
+                "octubre",
+                "noviembre",
+                "diciembre",
+            ]
+            month_idx = (
+                months_order.index(month_str) if month_str in months_order else 99
+            )
+            return (year, month_idx)
+        except Exception:
+            return (9999, 99)
+
+    return sorted(date_cols, key=sort_key)
+
 
 class DiferidoCalculationEngine:
-    """Motor especializado para cálculos financieros de diferidos"""
+    """
+    Motor especializado para cálculos de diferido
+    Replica EXACTAMENTE la lógica de DiferidoCalcular, DiferidoInternoCalcular y DiferidoExternoCalcular
+    """
 
-    # Constantes de columnas (del V1 original)
+    # Constantes de DiferidoInternoCalcular - EXACTO V1
     LISTA_COLUMNAS = [
         "CodigoLiquidacion",
         "NroDocumento",
@@ -37,372 +115,509 @@ class DiferidoCalculationEngine:
         "Interes",
         "DiasEfectivo",
     ]
+    DIAS_EFECTIVO = "DiasEfectivo"
+    INTERES = "Interes"
+    FECHA_PAGO_CONFIRMADO = "FechaConfirmado"
+    FECHA_OPERACION = "FechaOperacion"
 
     def __init__(self):
         self.logger = settings.logger
-        # Configurar locale para manejo de fechas en español
-        try:
-            locale.setlocale(locale.LC_TIME, "es_ES.UTF-8")
-        except locale.Error:
-            pass  # Fallback si no está disponible
 
-    async def calculate_diferido_interno_async(
-        self, df: pd.DataFrame, hasta: str
+    def log(self, message: str) -> None:
+        """Logging compatible con V1"""
+        self.logger(message)
+
+    def last_day_of_month(self, date: datetime) -> datetime:
+        """Obtiene el último día del mes - LÓGICA EXACTA V1"""
+        if date.month == 12:
+            next_month = date.replace(year=date.year + 1, month=1, day=1)
+        else:
+            next_month = date.replace(month=date.month + 1, day=1)
+        return next_month - timedelta(days=1)
+
+    def reorder_date_columns(self, date_cols: list[str]) -> list[str]:
+        """
+        Recibe una lista de columnas de fecha ya convertidas con formato 'mes-YYYY'
+        y las retorna ordenadas cronológicamente - LÓGICA EXACTA V1
+        """
+        return reorder_date_columns(date_cols)
+
+    # ==================== DIFERIDO INTERNO - LÓGICA EXACTA V1 ====================
+
+    def calcular_monto_por_mes(self, row, mes_inicio, mes_fin):
+        """Cálculo de monto por mes - LÓGICA EXACTA DiferidoInternoCalcular V1"""
+        dias_total = row[self.DIAS_EFECTIVO]
+        monto_total = row[self.INTERES]
+
+        if dias_total <= 0 or np.isnan(dias_total):
+            return 0
+
+        if (
+            mes_inicio <= row[self.FECHA_PAGO_CONFIRMADO]
+            and mes_fin >= row[self.FECHA_OPERACION]
+        ):
+            mes_inicio_ajustado = max(mes_inicio, row[self.FECHA_OPERACION])
+            mes_fin_ajustado = min(mes_fin, row[self.FECHA_PAGO_CONFIRMADO])
+
+            dias_en_mes = (mes_fin_ajustado - mes_inicio_ajustado).days + 1
+
+            porcentaje_dias_mes = dias_en_mes / dias_total
+
+            if porcentaje_dias_mes > 0:
+                monto_mes = monto_total * porcentaje_dias_mes
+                return monto_mes
+            else:
+                return 0
+        else:
+            return 0
+
+    def put_dates_in_columns(
+        self,
+        df: pd.DataFrame,
+        fecha_min: datetime,
+        fecha_max: datetime,
+    ) -> pd.DataFrame:
+        """Poner fechas en columnas - LÓGICA EXACTA DiferidoInternoCalcular V1"""
+        fecha_actual = fecha_min
+        while fecha_actual <= fecha_max:
+            mes_inicio = fecha_actual.replace(day=1)
+            mes_fin = self.last_day_of_month(mes_inicio)
+            col_name = mes_inicio.strftime("%B-%Y")
+
+            df[col_name] = df.apply(
+                lambda row: self.calcular_monto_por_mes(row, mes_inicio, mes_fin),
+                axis=1,
+            )
+
+            # Avanzar al siguiente mes
+            fecha_actual += relativedelta(months=1)
+        return df
+
+    def calcular_diferido_interno(
+        self, df_interno: pd.DataFrame, hasta: str
     ) -> pd.DataFrame:
         """
-        Calcula diferidos internos de manera asíncrona
+        Calcula el diferido interno - LÓGICA EXACTA DiferidoInternoCalcular V1
 
-        Args:
-            df: DataFrame con datos base
-            hasta: Período hasta el cual calcular (YYYY-MM)
+        Parámetros:
+            df_interno (pd.DataFrame): DataFrame interno con datos KPI
+            hasta (str): Cadena obligatoria en formato "YYYY-MM"
 
-        Returns:
-            DataFrame con cálculos de diferidos internos
+        Retorna:
+            pd.DataFrame: DataFrame con columnas de cada mes calculadas hasta la fecha límite
         """
-        try:
-            # Ejecutar cálculo en hilo separado para no bloquear
-            result = await asyncio.to_thread(self.calculate_diferido_interno, df, hasta)
-
-            self.logger(f"✅ Cálculo diferido interno completado para período: {hasta}")
-            return result
-
-        except Exception as e:
-            self.logger(f"❌ Error en cálculo diferido interno: {str(e)}")
-            raise
-
-    def calculate_diferido_interno(self, df: pd.DataFrame, hasta: str) -> pd.DataFrame:
-        """
-        Realiza el cálculo de diferidos internos (lógica del V1)
-
-        Args:
-            df: DataFrame con datos base
-            hasta: Período hasta el cual calcular (formato YYYY-MM)
-
-        Returns:
-            DataFrame con los cálculos de diferidos
-        """
-        try:
-            if df.empty:
-                return pd.DataFrame()
-
-            # Crear copia para no modificar original
-            df_work = df.copy()
-
-            # Validar columnas requeridas
-            missing_cols = [
-                col for col in self.LISTA_COLUMNAS if col not in df_work.columns
-            ]
-            if missing_cols:
-                raise ValueError(f"Faltan columnas requeridas: {missing_cols}")
-
-            # Convertir fechas
-            df_work["FechaOperacion"] = pd.to_datetime(df_work["FechaOperacion"])
-            df_work["FechaConfirmado"] = pd.to_datetime(df_work["FechaConfirmado"])
-
-            # Procesar cada fila para calcular diferidos por mes
-            results = []
-            for index, row in df_work.iterrows():
-                row_results = self._calculate_row_diferidos(row, hasta)
-                results.append(row_results)
-
-            # Convertir resultados a DataFrame
-            if results:
-                result_df = pd.DataFrame(results)
-                self.logger(f"✅ Procesadas {len(results)} filas para diferido interno")
-                return result_df
-            else:
-                return pd.DataFrame()
-
-        except Exception as e:
-            self.logger(f"❌ Error en calculate_diferido_interno: {str(e)}")
-            raise
-
-    def _calculate_row_diferidos(self, row: pd.Series, hasta: str) -> Dict[str, Any]:
-        """
-        Calcula diferidos para una fila específica
-
-        Args:
-            row: Fila de datos
-            hasta: Período límite
-
-        Returns:
-            Diccionario con cálculos por mes
-        """
-        try:
-            # Extraer datos básicos de la fila
-            result = {
-                "CodigoLiquidacion": row["CodigoLiquidacion"],
-                "NroDocumento": row["NroDocumento"],
-                "FechaOperacion": row["FechaOperacion"],
-                "FechaConfirmado": row["FechaConfirmado"],
-                "Moneda": row["Moneda"],
-                "Interes": float(row["Interes"]),
-                "DiasEfectivo": int(row["DiasEfectivo"]),
-            }
-
-            # Calcular diferidos por mes hasta el período límite
-            year_limite, month_limite = map(int, hasta.split("-"))
-            fecha_limite = datetime(year_limite, month_limite, 1)
-
-            # Generar meses desde fecha de operación hasta límite
-            fecha_operacion = pd.to_datetime(row["FechaOperacion"])
-            fecha_actual = fecha_operacion.replace(day=1)  # Primer día del mes
-
-            while fecha_actual <= fecha_limite:
-                mes_str = fecha_actual.strftime("%B-%Y").lower()  # formato: enero-2024
-
-                # Calcular monto diferido para este mes
-                monto = self._calcular_monto_por_mes(row, fecha_actual)
-                result[mes_str] = float(monto) if monto else 0.0
-
-                # Avanzar al siguiente mes
-                fecha_actual += relativedelta(months=1)
-
-            return result
-
-        except Exception as e:
-            self.logger(f"Error calculando fila: {str(e)}")
-            return {}
-
-    def _calcular_monto_por_mes(self, row: pd.Series, mes_fecha: datetime) -> float:
-        """
-        Calcula el monto diferido para un mes específico (lógica del V1)
-
-        Args:
-            row: Datos de la operación
-            mes_fecha: Fecha del mes a calcular
-
-        Returns:
-            Monto diferido para ese mes
-        """
-        try:
-            fecha_operacion = pd.to_datetime(row["FechaOperacion"])
-            fecha_confirmado = pd.to_datetime(row["FechaConfirmado"])
-            interes = float(row["Interes"])
-            dias_efectivo = int(row["DiasEfectivo"])
-
-            # Inicio y fin del mes
-            mes_inicio = mes_fecha.replace(day=1)
-            mes_fin = (mes_inicio + relativedelta(months=1)) - timedelta(days=1)
-
-            # Verificar si el mes está en el rango de la operación
-            if mes_fin < fecha_operacion or mes_inicio > fecha_confirmado:
-                return 0.0
-
-            # Calcular días efectivos en este mes
-            inicio_efectivo = max(mes_inicio, fecha_operacion)
-            fin_efectivo = min(mes_fin, fecha_confirmado)
-
-            if inicio_efectivo > fin_efectivo:
-                return 0.0
-
-            dias_en_mes = (fin_efectivo - inicio_efectivo).days + 1
-
-            # Calcular proporción del interés para este mes
-            if dias_efectivo > 0:
-                proporcion = dias_en_mes / dias_efectivo
-                monto_mes = interes * proporcion
-                return round(monto_mes, 2)
-
-            return 0.0
-
-        except Exception as e:
-            self.logger(f"Error calculando monto por mes: {str(e)}")
-            return 0.0
-
-
-class DiferidoComparisonEngine:
-    """Motor especializado para comparar diferidos externos vs internos"""
-
-    def __init__(self):
-        self.logger = settings.logger
-
-    async def compare_diferidos_async(
-        self, df_externo: pd.DataFrame, df_interno: pd.DataFrame
-    ) -> Dict[str, Any]:
-        """
-        Compara diferidos externos vs internos de manera asíncrona
-
-        Args:
-            df_externo: DataFrame con datos externos
-            df_interno: DataFrame con datos calculados internamente
-
-        Returns:
-            Diccionario con resultados de comparación
-        """
-        try:
-            result = await asyncio.to_thread(
-                self.compare_diferidos, df_externo, df_interno
+        if not hasta:
+            raise ValueError(
+                "El parámetro 'hasta' es obligatorio y debe tener el formato 'YYYY-MM'."
             )
 
-            self.logger("✅ Comparación de diferidos completada")
-            return result
+        df = df_interno.copy()
+        df = df.loc[:, self.LISTA_COLUMNAS]
+        fecha_min = df[self.FECHA_OPERACION].min()
+        fecha_max = df[self.FECHA_PAGO_CONFIRMADO].max()
+        hasta_date = datetime.strptime(hasta, "%Y-%m")
+        hasta_date = self.last_day_of_month(hasta_date)
+        df = df[df[self.FECHA_OPERACION] <= hasta_date]
+        df = self.put_dates_in_columns(df, fecha_min, fecha_max)
+        return df
 
-        except Exception as e:
-            self.logger(f"❌ Error en comparación de diferidos: {str(e)}")
-            raise
+    # ==================== DIFERIDO EXTERNO - LÓGICA EXACTA V1 ====================
 
-    def compare_diferidos(
-        self, df_externo: pd.DataFrame, df_interno: pd.DataFrame
-    ) -> Dict[str, Any]:
-        """
-        Realiza la comparación entre diferidos externos e internos (lógica del V1)
-
-        Args:
-            df_externo: DataFrame con datos externos
-            df_interno: DataFrame con datos calculados
-
-        Returns:
-            Diccionario con análisis de diferencias
-        """
-        try:
-            # Identificar columnas de fechas dinámicas
-            date_cols_externo = self._get_date_columns(df_externo)
-            date_cols_interno = self._get_date_columns(df_interno)
-
-            # Unión de columnas de fechas y ordenamiento cronológico
-            union_date_cols = list(set(date_cols_externo + date_cols_interno))
-            date_columns_ordered = self._reorder_date_columns(union_date_cols)
-
-            # Columnas fijas para comparación
-            fixed_cols = [
-                "CodigoLiquidacion",
-                "NroDocumento",
-                "Interes",
-                "FechaOperacion",
-                "FechaConfirmado",
-                "Moneda",
-                "DiasEfectivo",
-            ]
-
-            # Reindexar ambos DataFrames con mismo orden de columnas
-            all_cols = fixed_cols + date_columns_ordered
-            df_ext_reindexed = df_externo.reindex(columns=all_cols, fill_value=0)
-            df_int_reindexed = df_interno.reindex(columns=all_cols, fill_value=0)
-
-            # Agrupar por clave de liquidación y moneda
-            key_cols = ["CodigoLiquidacion", "Moneda"]
-            numeric_cols = [
-                col
-                for col in all_cols
-                if col not in key_cols + ["FechaOperacion", "FechaConfirmado"]
-            ]
-
-            # Agrupar y sumar valores numéricos
-            df_ext_grouped = df_ext_reindexed.groupby(key_cols)[numeric_cols].sum(
-                numeric_only=True
+    def read_excel_file(
+        self, file_path_or_buffer, sheet_name: str, usecols: str, date_col: str
+    ):
+        """Leer archivo Excel - LÓGICA EXACTA DiferidoExternoCalcular V1"""
+        # Si file_path_or_buffer es un objeto file-like (tiene método 'read')
+        if hasattr(file_path_or_buffer, "read"):
+            file_path_or_buffer.seek(0)
+            df = pd.read_excel(
+                file_path_or_buffer, sheet_name=sheet_name, skiprows=1, usecols=usecols
             )
-            df_int_grouped = df_int_reindexed.groupby(key_cols)[numeric_cols].sum(
-                numeric_only=True
+        else:
+            # Asumimos que es una ruta de archivo
+            df = pd.read_excel(
+                file_path_or_buffer, sheet_name=sheet_name, skiprows=1, usecols=usecols
             )
+        # Eliminar columnas sin nombre (generadas como 'Unnamed')
+        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+        df[date_col] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
+        return df
 
-            # Calcular diferencias
-            diferencias = self._calculate_differences(
-                df_ext_grouped, df_int_grouped, date_columns_ordered
-            )
-
-            # Generar reporte de comparación
-            comparison_report = {
-                "total_registros_externos": len(df_externo),
-                "total_registros_internos": len(df_interno),
-                "columnas_fecha_analizadas": date_columns_ordered,
-                "diferencias_encontradas": diferencias,
-                "timestamp": datetime.now().isoformat(),
-            }
-
-            return comparison_report
-
-        except Exception as e:
-            self.logger(f"❌ Error en compare_diferidos: {str(e)}")
-            raise
-
-    def _get_date_columns(self, df: pd.DataFrame) -> List[str]:
-        """Identifica columnas de fechas en formato mes-YYYY"""
-        date_cols = []
-        for col in df.columns:
-            if re.match(r"^[A-Za-z]+-\d{4}$", col):
-                date_cols.append(col)
-        return date_cols
-
-    def _reorder_date_columns(self, date_cols: List[str]) -> List[str]:
-        """
-        Ordena columnas de fechas cronológicamente (lógica del V1)
-        """
-
-        def sort_key(col: str):
-            try:
-                month_str, year_str = col.split("-")
-                year = int(year_str)
-                months_order = [
-                    "enero",
-                    "febrero",
-                    "marzo",
-                    "abril",
-                    "mayo",
-                    "junio",
-                    "julio",
-                    "agosto",
-                    "septiembre",
-                    "octubre",
-                    "noviembre",
-                    "diciembre",
-                ]
-                month_idx = (
-                    months_order.index(month_str) if month_str in months_order else 99
-                )
-                return (year, month_idx)
-            except Exception:
-                return (9999, 99)
-
-        return sorted(date_cols, key=sort_key)
-
-    def _calculate_differences(
+    def auto_get_usecols(
         self,
-        df_externo: pd.DataFrame,
-        df_interno: pd.DataFrame,
-        date_columns: List[str],
-    ) -> Dict[str, Any]:
-        """Calcula diferencias entre DataFrames agrupados"""
-        try:
-            diferencias = {
-                "registros_con_diferencias": 0,
-                "diferencias_significativas": 0,
-                "detalle_diferencias": [],
+        file_path_or_buffer,
+        sheet_name: str,
+        fixed_range: tuple[str, str],
+        stop_marker: str,
+    ) -> tuple[str, list[str]]:
+        """
+        Auto obtener columnas - LÓGICA EXACTA DiferidoExternoCalcular V1
+        """
+        # Si el archivo está cerrado, reabrirlo usando su nombre (si existe)
+        if hasattr(file_path_or_buffer, "closed") and file_path_or_buffer.closed:
+            if hasattr(file_path_or_buffer, "name"):
+                file_path_or_buffer = open(file_path_or_buffer.name, "rb")
+            else:
+                raise ValueError("No se puede reabrir el archivo: no tiene 'name'.")
+        else:
+            if hasattr(file_path_or_buffer, "seek"):
+                file_path_or_buffer.seek(0)
+
+        wb = openpyxl.load_workbook(file_path_or_buffer, read_only=True, data_only=True)
+        # Verifica que la hoja exista
+        if sheet_name not in wb.sheetnames:
+            raise KeyError(
+                f"Worksheet '{sheet_name}' does not exist. Available sheets: {wb.sheetnames}"
+            )
+        ws = wb[sheet_name]
+        fixed_start = column_index_from_string(fixed_range[0])
+        fixed_end = column_index_from_string(fixed_range[1])
+
+        # Definir dónde inicia el grupo de fechas según la hoja:
+        if sheet_name.upper() == "US":
+            date_start = column_index_from_string("S")
+        elif sheet_name.upper() == "MN":
+            date_start = column_index_from_string("N")
+        else:
+            date_start = fixed_end + 1
+
+        end_month = None
+        raw_date_cols = []
+        # Iterar desde date_start hasta el final o hasta encontrar el stop_marker en la fila 2.
+        for col_idx in range(date_start, ws.max_column + 1):
+            cell_value = ws.cell(row=2, column=col_idx).value
+            # Si se encuentra el stop_marker, se finaliza el grupo de fechas
+            if cell_value is not None and cell_value == stop_marker:
+                end_month = col_idx - 1
+                break
+            cell1 = ws.cell(row=1, column=col_idx).value
+            combined = ""
+            if cell1:
+                combined += str(cell1).strip()
+            if cell_value:
+                combined += str(cell_value).strip()
+            raw_date_cols.append(combined)
+        if end_month is None:
+            end_month = ws.max_column
+
+        # Obtener las letras correspondientes al rango de fechas
+        date_cols_letters = [
+            get_column_letter(i) for i in range(date_start, end_month + 1)
+        ]
+        # Obtener las letras para el rango fijo
+        fixed_cols = [get_column_letter(i) for i in range(fixed_start, fixed_end + 1)]
+        usecols_str = ",".join(fixed_cols + date_cols_letters)
+
+        # Procesar raw_date_cols para obtener los nombres de fechas
+        # Filtrar solo aquellos que cumplan el patrón: 4 dígitos seguidos de al menos 3 letras
+        raw_filtered = [
+            col
+            for col in raw_date_cols
+            if re.match(r"^\d{4}[A-Za-z]{3,}$", col, re.IGNORECASE)
+        ]
+        # Convertir al formato deseado, ej.: "2021AGO" -> "agosto-2021"
+        converted = [convert_date_col(col) for col in raw_filtered]
+        # Ordenar cronológicamente
+        converted = reorder_date_columns(converted)
+
+        return usecols_str, converted
+
+    def process_excel_files(
+        self,
+        file_path_or_buffer,
+        pen_end_date: str = "2025-07-31",
+        usd_end_date: str = "2025-12-31",
+        read_type: str | None = None,
+    ):
+        """Procesar archivos Excel - LÓGICA EXACTA DiferidoExternoCalcular V1"""
+        # PARA PEN:
+        # Se obtiene el usecols y las columnas de fecha a partir del rango fijo ("B", "H")
+        pen_usecols, pen_date_cols = self.auto_get_usecols(
+            file_path_or_buffer,
+            sheet_name="MN",
+            fixed_range=("B", "H"),
+            stop_marker="VAL",
+        )
+        print(f"Usecols PEN: {pen_usecols}")
+        df_pen = self.read_excel_file(
+            file_path_or_buffer,
+            sheet_name="MN",
+            usecols=pen_usecols,
+            date_col="Fecha de Op",
+        )
+        print(
+            f"dataframe df_pen: {df_pen.loc[df_pen['LIQUIDACIÓN'] == 'LIQ2502000076', :] if 'LIQUIDACIÓN' in df_pen.columns and not df_pen.empty else 'No data'}"
+        )
+        print(f"Columnas PEN: {pen_date_cols}")
+        # Calcular el número de columnas fijas en PEN (de "B" a "H")
+        fixed_pen_count = (
+            column_index_from_string("H") - column_index_from_string("B") + 1
+        )
+        print(f"Columnas fijas PEN: {fixed_pen_count}")
+        fixed_pen = list(df_pen.columns[:fixed_pen_count])
+        print(f"Columnas fijas PEN: {fixed_pen}")
+        expected_pen_cols = fixed_pen + pen_date_cols
+        df_pen = df_pen.iloc[:, : len(expected_pen_cols)]
+        df_pen.columns = expected_pen_cols
+        df_pen["Moneda"] = "PEN"
+        print(
+            f"dataframe df_pen final: {df_pen.loc[df_pen['LIQUIDACIÓN'] == 'LIQ2502000076', :] if 'LIQUIDACIÓN' in df_pen.columns and not df_pen.empty else 'No data'}"
+        )
+
+        # PARA USD:
+        # Se obtiene el usecols y las columnas de fecha a partir del rango fijo ("B", "G")
+        usd_usecols, usd_date_cols = self.auto_get_usecols(
+            file_path_or_buffer,
+            sheet_name="US",
+            fixed_range=("B", "G"),
+            stop_marker="VAL",
+        )
+
+        df_usd = self.read_excel_file(
+            file_path_or_buffer,
+            sheet_name="US",
+            usecols=usd_usecols,
+            date_col="Fecha de Op",
+        )
+
+        # Calcular el número de columnas fijas en USD (de "B" a "G")
+        fixed_usd_count = (
+            column_index_from_string("G") - column_index_from_string("B") + 1
+        )
+        fixed_usd = list(df_usd.columns[:fixed_usd_count])
+        print(f"Columnas fijas USD: {fixed_usd}")
+        expected_usd_cols = fixed_usd + usd_date_cols
+        df_usd = df_usd.iloc[:, : len(expected_usd_cols)]
+        df_usd.columns = expected_usd_cols
+        df_usd["Moneda"] = "USD"
+
+        df = pd.concat([df_pen, df_usd], axis=0).rename(
+            columns={
+                "LIQUIDACIÓN": "CodigoLiquidacion",
+                "Fecha de Op": "FechaOperacion",
+                "Días Efect": "DiasEfectivo",
+                "Intereses sin IGV": "Interes",
+                "F.Pago Confirmada / Real": "FechaConfirmado",
             }
+        )
+        df["CodigoLiquidacion"] = df["CodigoLiquidacion"].str.strip()
+        df["N° de Factura referencial"] = df["N° de Factura referencial"].str.strip()
+        df.rename(columns={"N° de Factura referencial": "NroDocumento"}, inplace=True)
+        df = df.drop(columns=["TIPO DE OPERACIÓN"], errors="ignore")
+        return df
 
-            # Obtener todas las claves únicas
-            all_keys = set(df_externo.index.tolist() + df_interno.index.tolist())
+    def replace_columns_with_dates(self, df: pd.DataFrame):
+        """Reemplazar columnas con fechas - LÓGICA EXACTA DiferidoExternoCalcular V1"""
+        # Columnas fijas deseadas en el orden correcto
+        columns_to_keep = [
+            "CodigoLiquidacion",
+            "NroDocumento",
+            "FechaOperacion",
+            "FechaConfirmado",
+            "Moneda",
+            "Interes",
+            "DiasEfectivo",
+        ]
+        # Excluir las columnas indeseadas
+        unwanted = ["Día de fecha de Op.", "Día de fecha de Pago"]
+        # Tomar el resto de columnas (asumidas de fecha) sin las que no deseamos
+        date_columns = [
+            col
+            for col in df.columns
+            if col not in columns_to_keep and col not in unwanted
+        ]
+        date_columns = reorder_date_columns(date_columns)
+        new_columns = columns_to_keep + date_columns
+        return df[new_columns]
 
-            for key in all_keys:
-                key_differences = {}
-                tiene_diferencias = False
+    def calcular_diferido_externo(
+        self, file_buffer: Union[BytesIO, str], hasta: str
+    ) -> pd.DataFrame:
+        """
+        Calcula el diferido externo - LÓGICA EXACTA DiferidoExternoCalcular V1
 
-                # Comparar valores para esta clave
-                for col in date_columns:
-                    ext_val = df_externo.loc[key, col] if key in df_externo.index else 0
-                    int_val = df_interno.loc[key, col] if key in df_interno.index else 0
+        Parámetros:
+            file_buffer: Archivo Excel o buffer
+            hasta (str): Cadena obligatoria con el formato "YYYY-MM"
 
-                    diferencia = abs(float(ext_val) - float(int_val))
+        Retorna:
+            pd.DataFrame: DataFrame final procesado
+        """
+        # Validamos el formato
+        if not hasta or not re.match(r"^\d{4}-\d{2}$", hasta):
+            raise ValueError(
+                "El parámetro 'hasta' es obligatorio y debe tener el formato 'YYYY-MM'."
+            )
 
-                    if diferencia > 0.01:  # Umbral de diferencia significativa
-                        key_differences[col] = {
-                            "externo": float(ext_val),
-                            "interno": float(int_val),
-                            "diferencia": diferencia,
-                        }
-                        tiene_diferencias = True
+        # Procesar el archivo Excel y obtener el DataFrame con los datos mensuales
+        df = self.process_excel_files(file_buffer)
 
-                if tiene_diferencias:
-                    diferencias["registros_con_diferencias"] += 1
-                    if any(d["diferencia"] > 100 for d in key_differences.values()):
-                        diferencias["diferencias_significativas"] += 1
+        # Convertir 'hasta' a fecha y obtener su último día
+        hasta_date = datetime.strptime(hasta, "%Y-%m")
+        hasta_date = self.last_day_of_month(hasta_date)
 
-                    diferencias["detalle_diferencias"].append(
-                        {"clave": key, "diferencias": key_differences}
-                    )
+        # Filtrar según FechaOperacion
+        df = df[df["FechaOperacion"] <= hasta_date]
 
-            return diferencias
+        # Reorganizar columnas y limpiar DataFrame
+        df = self.replace_columns_with_dates(df)
+        df = df.dropna(subset=["CodigoLiquidacion"])
+        df = df.fillna(0)
+        return df
 
-        except Exception as e:
-            self.logger(f"Error calculando diferencias: {str(e)}")
-            return {"error": str(e)}
+    # ==================== COMPARAR DIFERIDOS - LÓGICA EXACTA V1 ====================
+
+    def comparar_diferidos(
+        self, df_externo: pd.DataFrame, df_calculado: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Compara diferidos - LÓGICA EXACTA DiferidoCalcular V1
+        """
+        # Identificar las columnas de fecha (con el patrón "Mes-YYYY")
+        date_cols_externo = set(
+            col for col in df_externo.columns if re.match(r"^[A-Za-z]+-\d{4}$", col)
+        )
+        date_cols_calculado = set(
+            col for col in df_calculado.columns if re.match(r"^[A-Za-z]+-\d{4}$", col)
+        )
+        # Unión de ambas y ordenar cronológicamente
+        union_date_cols = list(date_cols_externo.union(date_cols_calculado))
+        date_columns = self.reorder_date_columns(union_date_cols)
+
+        # Reordenamos las columnas fijas deseadas (nota: "CodigoLiquidacion" y "Moneda" son índices)
+        # Queremos fijar el orden: NroDocumento, Interes, FechaOperacion, FechaConfirmado, DiasEfectivo
+        fixed_cols = [
+            "CodigoLiquidacion",
+            "NroDocumento",
+            "Interes",
+            "FechaOperacion",
+            "FechaConfirmado",
+            "Moneda",
+            "DiasEfectivo",
+        ]
+        # Reindexar ambos DataFrames para tener los fijos y las columnas de fechas en el mismo orden.
+        df_externo = df_externo.reindex(columns=fixed_cols + date_columns, fill_value=0)
+        df_calculado = df_calculado.reindex(
+            columns=fixed_cols + date_columns, fill_value=0
+        )
+
+        # Definir las columnas numéricas a agrupar (todo excepto las de identificación y las fechas)
+        numeric_cols = [
+            col
+            for col in df_externo.columns
+            if col
+            not in ["CodigoLiquidacion", "Moneda", "FechaOperacion", "FechaConfirmado"]
+        ]
+
+        # Agrupación numérica: suma (solo se suman columnas numéricas)
+        df_numeric_grouped = df_externo.groupby(["CodigoLiquidacion", "Moneda"])[
+            numeric_cols
+        ].sum(numeric_only=True)
+        calc_numeric_grouped = df_calculado.groupby(["CodigoLiquidacion", "Moneda"])[
+            numeric_cols
+        ].sum(numeric_only=True)
+
+        # Agrupación de las columnas fijas no numéricas: usamos "last"
+        df_fixed_grouped = df_externo.groupby(["CodigoLiquidacion", "Moneda"])[
+            ["NroDocumento", "FechaOperacion", "FechaConfirmado"]
+        ].agg("last")
+        calc_fixed_grouped = df_calculado.groupby(["CodigoLiquidacion", "Moneda"])[
+            ["NroDocumento", "FechaOperacion", "FechaConfirmado"]
+        ].agg("last")
+
+        # Agrupación de las columnas que no estuvieron en la fija y que se quieran mantener (por ejemplo, DiasEfectivo e Interes)
+        # Notar que "Interes" y "DiasEfectivo" aparecen en la suma; de allí se tomarán sus valores sumados.
+        # Unir ambas agregaciones:
+        df_grouped = df_numeric_grouped.join(df_fixed_grouped)
+        calc_grouped = calc_numeric_grouped.join(calc_fixed_grouped)
+
+        # Combinar en un único DataFrame usando keys "Externo" y "Calculado"
+        sums = pd.concat(
+            [df_grouped, calc_grouped], axis=1, keys=["Externo", "Calculado"]
+        )
+
+        # Calcular diferencias para cada columna de fechas (de meses)
+        for col in date_columns:
+            sums[("Diferencia_Monto", col)] = (
+                sums[("Externo", col)] - sums[("Calculado", col)]
+            )
+
+        diff_cols = [("Diferencia_Monto", col) for col in date_columns]
+        sums["Diferencia_Significativa"] = sums[diff_cols].abs().ge(1).any(axis=1)
+
+        # Reordenar las columnas en cada nivel para que en "Externo" y "Calculado" aparezcan primero
+        # las columnas fijas ordenadas según lo deseado, seguidas de las columnas de fechas.
+        fijo_orden = [
+            "NroDocumento",
+            "Interes",
+            "FechaOperacion",
+            "FechaConfirmado",
+            "DiasEfectivo",
+        ]
+
+        def reordenar_level(key):
+            # Para un nivel dado (Externo o Calculado), seleccionar columnas fijas según el orden definido
+            fixed_level = [(key, col) for col in fijo_orden]
+            date_level = [(key, col) for col in date_columns]
+            return fixed_level + date_level
+
+        nuevos_cols = (
+            reordenar_level("Externo")
+            + reordenar_level("Calculado")
+            + [("Diferencia_Monto", col) for col in date_columns]
+            + [("Diferencia_Significativa", "")]
+        )
+        sums = sums[nuevos_cols]
+        return sums
+
+    # ==================== MÉTODOS PRINCIPALES - COMPATIBILIDAD TOTAL V1 ====================
+
+    def calcular_diferido(
+        self, file_buffer: Union[BytesIO, str], df_interno: pd.DataFrame, hasta: str
+    ) -> pd.DataFrame:
+        """
+        Calcula diferido completo - LÓGICA EXACTA DiferidoCalcular V1
+        """
+        if not hasta or not re.match(r"^\d{4}-\d{2}$", hasta):
+            raise ValueError(
+                "El parámetro 'hasta' es obligatorio y debe tener el formato 'YYYY-MM'."
+            )
+        # Calcular el diferido interno
+        diferido_interno_df = self.calcular_diferido_interno(df_interno, hasta=hasta)
+        # Calcular el diferido externo
+        diferido_externo_df = self.calcular_diferido_externo(file_buffer, hasta=hasta)
+        return self.comparar_diferidos(diferido_externo_df, diferido_interno_df)
+
+    async def calcular_diferido_async(
+        self, file_buffer: Union[BytesIO, str], df_interno: pd.DataFrame, hasta: str
+    ) -> pd.DataFrame:
+        """
+        Calcula diferido completo asíncrono - LÓGICA EXACTA DiferidoCalcular V1
+        """
+        if not hasta or not re.match(r"^\d{4}-\d{2}$", hasta):
+            raise ValueError(
+                "El parámetro 'hasta' es obligatorio y debe tener el formato 'YYYY-MM'."
+            )
+        # Ejecutar métodos pesados en hilos separados
+        diferido_interno_df = await asyncio.to_thread(
+            self.calcular_diferido_interno, df_interno, hasta
+        )
+        diferido_externo_df = await asyncio.to_thread(
+            self.calcular_diferido_externo, file_buffer, hasta
+        )
+        resultado = await asyncio.to_thread(
+            self.comparar_diferidos, diferido_externo_df, diferido_interno_df
+        )
+        return resultado
+
+    async def reorder_date_columns_async(self, date_cols: list[str]) -> list[str]:
+        """Versión asíncrona de reorder_date_columns - COMPATIBILIDAD V1"""
+        # Ejecuta la función sincrónica en un hilo separado
+        return await asyncio.to_thread(self.reorder_date_columns, date_cols)
+
+    async def comparar_diferidos_async(self, df_externo, df_calculado):
+        """Versión asíncrona de comparar_diferidos - COMPATIBILIDAD V1"""
+        # Ejecuta la función comparar_diferidos en un hilo separado
+        return await asyncio.to_thread(
+            self.comparar_diferidos, df_externo, df_calculado
+        )
