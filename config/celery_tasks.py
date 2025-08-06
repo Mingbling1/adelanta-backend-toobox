@@ -5,16 +5,16 @@ Migración de cronjobs a tareas de Celery
 
 import asyncio
 import pandas as pd
-import orjson
 from datetime import datetime
 from typing import Dict, Any
 
 from config.celery_config import celery_app
 from config.repository_factory import repository_factory
 from config.logger import logger
-from config.redis import redis_client_manager
 from cronjobs.BaseCronjob import BaseCronjob
 from utils.adelantafactoring.calculos import KPICalcular
+import orjson
+from config.redis import redis_client_manager
 
 
 @celery_app.task(
@@ -53,9 +53,11 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
     """
     Lógica principal para actualizar KPI Acumulado
     """
+    # Crear repositories frescos
+    tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
+    kpi_acumulado_repo = await repository_factory.create_kpi_acumulado_repository()
 
-    # Usar context managers para repositories
-    async with repository_factory.create_tipo_cambio_repository() as tipo_cambio_repo:
+    try:
         # TipoCambio
         tipo_cambio_records = await tipo_cambio_repo.get_all_dicts(exclude_pk=True)
         tipo_cambio_df = pd.DataFrame(tipo_cambio_records)
@@ -63,7 +65,7 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
             tipo_cambio_df["TipoCambioFecha"]
         )
 
-        # KPI Acumulado calculation
+        # KPI Acumulado
         kpi_acumulado_calcular = await KPICalcular(tipo_cambio_df).calcular(
             start_date=BaseCronjob.obtener_datetime_fecha_inicio(),
             end_date=BaseCronjob.obtener_datetime_fecha_fin(),
@@ -71,14 +73,16 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
             tipo_reporte=0,
         )
 
-    # Usar context manager separado para operación de escritura
-    async with repository_factory.create_kpi_acumulado_repository() as kpi_acumulado_repo:
         # Usar bulk insert optimizado
         await kpi_acumulado_repo.delete_and_bulk_insert_chunked(
-            kpi_acumulado_calcular, chunk_size=5000
+            kpi_acumulado_calcular, chunk_size=2000
         )
 
-    return {"records": len(kpi_acumulado_calcular)}
+        return {"records": len(kpi_acumulado_calcular)}
+
+    finally:
+        # Limpiar recursos
+        await repository_factory.cleanup()
 
 
 @celery_app.task(
@@ -118,8 +122,19 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
     """
     status_key = "ActualizarTablasReportesCronjob_status"
 
-    # TipoCambio usando context manager
-    async with repository_factory.create_tipo_cambio_repository() as tipo_cambio_repo:
+    # Crear repositories
+    tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
+    kpi_repo = await repository_factory.create_kpi_repository()
+    saldos_repo = await repository_factory.create_saldos_repository()
+    nuevos_clientes_repo = (
+        await repository_factory.create_nuevos_clientes_nuevos_pagadores_repository()
+    )
+    actualizacion_repo = (
+        await repository_factory.create_actualizacion_reportes_repository()
+    )
+
+    try:
+        # TipoCambio
         tipo_cambio_records = await tipo_cambio_repo.get_all_dicts(exclude_pk=True)
         tipo_cambio_df = pd.DataFrame(tipo_cambio_records)
         tipo_cambio_df["TipoCambioFecha"] = pd.to_datetime(
@@ -138,61 +153,71 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
             as_df=False,
         )
 
-    # KPI repository
-    async with repository_factory.create_kpi_repository() as kpi_repo:
         await kpi_repo.delete_and_bulk_insert_chunked(kpi_calcular, chunk_size=2000)
 
-    # NuevosClientesNuevosPagadores
-    from utils.adelantafactoring.calculos import (
-        NuevosClientesNuevosPagadoresCalcular,
-    )
-
-    nuevos_clientes_calcular = NuevosClientesNuevosPagadoresCalcular(
-        pd.DataFrame(kpi_calcular)
-    ).calcular(
-        start_date=BaseCronjob.obtener_string_fecha_inicio(tipo=1),
-        end_date=BaseCronjob.obtener_string_fecha_fin(tipo=1),
-        ruc_c_col="RUCCliente",
-        ruc_p_col="RUCPagador",
-        ruc_c_ns_col="RazonSocialCliente",
-        ruc_p_ns_col="RazonSocialPagador",
-        ejecutivo_col="Ejecutivo",
-        type_op_col="TipoOperacion",
-    )
-
-    async with repository_factory.create_nuevos_clientes_nuevos_pagadores_repository() as nuevos_clientes_repo:
-        await nuevos_clientes_repo.delete_and_bulk_insert_chunked(
-            nuevos_clientes_calcular, chunk_size=2000
+        # NuevosClientesNuevosPagadores
+        from utils.adelantafactoring.calculos import (
+            NuevosClientesNuevosPagadoresCalcular,
         )
 
-    # Saldos
-    from utils.adelantafactoring.calculos import SaldosCalcular
+        nuevos_clientes_calcular = NuevosClientesNuevosPagadoresCalcular(
+            pd.DataFrame(kpi_calcular)
+        ).calcular(
+            start_date=BaseCronjob.obtener_string_fecha_inicio(tipo=1),
+            end_date=BaseCronjob.obtener_string_fecha_fin(tipo=1),
+            ruc_c_col="RUCCliente",
+            ruc_p_col="RUCPagador",
+            ruc_c_ns_col="RazonSocialCliente",
+            ruc_p_ns_col="RazonSocialPagador",
+            ejecutivo_col="Ejecutivo",
+            type_op_col="TipoOperacion",
+        )
 
-    saldos_calcular = SaldosCalcular().calcular()
+        await nuevos_clientes_repo.delete_and_bulk_insert_chunked(
+            nuevos_clientes_calcular, chunk_size=5000
+        )
 
-    async with repository_factory.create_saldos_repository() as saldos_repo:
+        # Saldos
+        from utils.adelantafactoring.calculos import SaldosCalcular
+
+        saldos_calcular = SaldosCalcular().calcular()
+
         await saldos_repo.delete_and_bulk_insert_chunked(
             saldos_calcular, chunk_size=2000
         )
 
-    # Actualizar status
-    now = datetime.now(BaseCronjob.peru_tz)
-
-    async with repository_factory.create_actualizacion_reportes_repository() as actualizacion_repo:
+        # Actualizar status
+        now = datetime.now(BaseCronjob.peru_tz)
         await actualizacion_repo.create(
             {"ultima_actualizacion": now, "estado": "Success", "detalle": None}
         )
 
-    # Redis status
-    now_str = now.isoformat()
-    status_value = orjson.dumps(
-        {"status": "Active", "timestamp": now_str, "error": None}
-    ).decode("utf-8")
+        # Redis status
+        now_str = now.isoformat()
+        status_value = orjson.dumps(
+            {"status": "Active", "timestamp": now_str, "error": None}
+        ).decode("utf-8")
+        client = redis_client_manager.get_client()
+        await client.set(status_key, status_value)
 
-    client = redis_client_manager.get_client()
-    await client.set(status_key, status_value)
+        return {
+            "kpi_records": len(kpi_calcular),
+            "saldos_records": len(saldos_calcular),
+        }
 
-    return {
-        "kpi_records": len(kpi_calcular),
-        "saldos_records": len(saldos_calcular),
-    }
+    except Exception as e:
+        # Error handling
+        now = datetime.now(BaseCronjob.peru_tz)
+        await actualizacion_repo.create(
+            {"ultima_actualizacion": now, "estado": "Error", "detalle": str(e)}
+        )
+        now_str = now.isoformat()
+        status_value = orjson.dumps(
+            {"status": "Error", "timestamp": now_str, "error": str(e)}
+        ).decode("utf-8")
+        client = redis_client_manager.get_client()
+        await client.set(status_key, status_value)
+        raise e
+
+    finally:
+        await repository_factory.cleanup()
