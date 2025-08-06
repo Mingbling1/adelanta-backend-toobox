@@ -107,13 +107,15 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 100M
+                    memory: 200M # Aumentado de 100M a 200M
                 reservations:
-                    memory: 50M
+                    memory: 100M # Aumentado de 50M a 100M
         volumes:
             - ./templates:/app/templates
+            - ./data/celerybeat:/app/celerybeat # 🆕 Directorio para archivos de beat
         environment:
             - REDIS_URL=redis://redis:6379/0
+            - CELERYBEAT_SCHEDULE_FILENAME=/app/celerybeat/celerybeat-schedule # 🆕 Archivo de schedule
         depends_on:
             - redis
             - celery-worker

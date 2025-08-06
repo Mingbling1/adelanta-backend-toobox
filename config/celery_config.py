@@ -41,7 +41,6 @@ celery_app.conf.update(
     # Configuración de routing - ACTUALIZADA para nueva estructura
     task_routes={
         "toolbox.kpi_acumulado": {"queue": "cronjobs"},
-        "toolbox.kpi": {"queue": "cronjobs"},
         "toolbox.tablas_reportes": {"queue": "cronjobs"},
         "toolbox.tablas_cxc": {"queue": "cronjobs"},
     },
@@ -59,6 +58,21 @@ celery_app.conf.update(
             "routing_key": "cronjobs",
         },
     },
+    # 🕐 CONFIGURACIÓN DE CELERY BEAT - CRÍTICA PARA FUNCIONAMIENTO
+    beat_schedule={
+        # 📊 Actualización automática de Tablas Reportes - 2 veces al día
+        "actualizar-tablas-reportes-manana": {
+            "task": "toolbox.tablas_reportes",
+            "schedule": "0 7 * * *",  # Todos los días a las 7:00 AM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        "actualizar-tablas-reportes-tarde": {
+            "task": "toolbox.tablas_reportes",
+            "schedule": "0 18 * * *",  # Todos los días a las 6:00 PM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+    },
+    beat_scheduler="celery.beat:PersistentScheduler",  # Scheduler por defecto
 )
 
 logger.info("✅ Celery configurado correctamente")

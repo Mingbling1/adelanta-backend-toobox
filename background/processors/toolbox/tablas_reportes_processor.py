@@ -22,7 +22,7 @@ class TablasReportesProcessor(BaseProcessor):
         self.description = "Actualiza las tablas de reportes: KPI, NuevosClientesNuevosPagadores y Saldos usando Celery"
         self.status_key = "ActualizarTablasReportesCronjob_status"
 
-    async def process(self, **kwargs) -> Dict[str, Any]:
+    async def run(self, **kwargs) -> Dict[str, Any]:
         """
         Ejecutar task usando Celery
         Mantiene compatibilidad con la interfaz original
@@ -45,7 +45,7 @@ class TablasReportesProcessor(BaseProcessor):
             logger.error(f"❌ Error enviando task a Celery: {str(e)}")
             raise e
 
-    def process_sync(self) -> Dict[str, Any]:
+    def run_sync(self) -> Dict[str, Any]:
         """
         Ejecutar de forma síncrona (para testing o casos especiales)
         """
