@@ -76,7 +76,7 @@ services:
         container_name: celery_worker
         env_file:
             - ./.env
-        command: celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=1 --pool=solo --max-tasks-per-child=1
+        command: uv run celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=1 --pool=solo --max-tasks-per-child=1
         restart: unless-stopped
         deploy:
             resources:
@@ -102,7 +102,7 @@ services:
         container_name: celery_beat
         env_file:
             - ./.env
-        command: celery -A config.celery_config beat --loglevel=info
+        command: uv run celery -A config.celery_config beat --loglevel=info
         restart: unless-stopped
         deploy:
             resources:
