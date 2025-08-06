@@ -53,14 +53,19 @@ def actualizar_kpi_acumulado_task(self) -> Dict[str, Any]:
 async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
     """
     Lógica principal para actualizar KPI Acumulado
+    Manejo robusto de conexiones DB para evitar event loop issues
     """
     # Crear factory fresco para esta task
     repo_factory = create_repository_factory()
 
     try:
+        logger.info("🔄 Creando repositories...")
+
         # Crear repositories frescos
         tipo_cambio_repo = await repo_factory.create_tipo_cambio_repository()
         kpi_acumulado_repo = await repo_factory.create_kpi_acumulado_repository()
+
+        logger.info("📊 Obteniendo datos de TipoCambio...")
 
         # TipoCambio
         tipo_cambio_records = await tipo_cambio_repo.get_all_dicts(exclude_pk=True)
@@ -68,6 +73,8 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
         tipo_cambio_df["TipoCambioFecha"] = pd.to_datetime(
             tipo_cambio_df["TipoCambioFecha"]
         )
+
+        logger.info("🧮 Calculando KPI Acumulado...")
 
         # KPI Acumulado
         kpi_acumulado_calcular = await KPICalcular(tipo_cambio_df).calcular(
@@ -77,17 +84,30 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
             tipo_reporte=0,
         )
 
+        logger.info(f"💾 Insertando {len(kpi_acumulado_calcular)} registros...")
+
         # Usar bulk insert optimizado
         await kpi_acumulado_repo.delete_and_bulk_insert_chunked(
-            kpi_acumulado_calcular, chunk_size=2000
+            kpi_acumulado_calcular, chunk_size=5000
         )
 
+        logger.info("✅ KPI Acumulado completado exitosamente")
         return {"records": len(kpi_acumulado_calcular)}
 
+    except Exception as e:
+        logger.error(f"❌ Error en lógica KPI Acumulado: {str(e)}")
+        raise e
+
     finally:
-        # Limpiar recursos del factory
-        await repo_factory.cleanup()
-        gc.collect()
+        # Limpiar recursos del factory de forma robusta
+        try:
+            logger.info("🧹 Limpiando recursos...")
+            await repo_factory.cleanup()
+            gc.collect()
+            logger.info("✅ Recursos limpiados")
+        except Exception as cleanup_error:
+            logger.error(f"⚠️ Error limpiando recursos: {cleanup_error}")
+            # No re-raise aquí para evitar enmascarar errores principales
 
 
 @celery_app.task(

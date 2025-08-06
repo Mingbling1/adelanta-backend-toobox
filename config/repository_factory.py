@@ -1,8 +1,3 @@
-"""
-🏭 Factory de Repositories para Celery Tasks
-Crea instancias frescas de repositories sin singletons
-"""
-
 from config.db_mysql import DatabaseSessionManager
 from config.settings import settings
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
@@ -33,16 +28,23 @@ class RepositoryFactory:
             engine_kwargs={
                 "echo": False,  # Sin logging detallado en tasks
                 "future": True,
-                "pool_size": 4,  # Pool más pequeño por worker
-                "max_overflow": 2,  # Overflow reducido
+                "pool_size": 2,  # Pool MUY pequeño para Celery
+                "max_overflow": 1,  # Overflow mínimo
                 "pool_recycle": 1800,  # Reciclar conexiones cada 30 min
+                "pool_pre_ping": True,  # Verificar conexiones antes de usar
+                "connect_args": {
+                    "connect_timeout": 10,
+                    "charset": "utf8mb4",
+                },
             },
         )
+        self._session = None
 
     async def get_db_session(self):
-        """Obtener sesión de base de datos usando nuestro session manager"""
-        async with self.session_manager.session() as session:
-            return session
+        """Obtener sesión de base de datos reutilizable"""
+        if self._session is None:
+            self._session = self.session_manager._sessionmaker()
+        return self._session
 
     async def create_tipo_cambio_repository(self) -> TipoCambioRepository:
         """Crear repository de TipoCambio"""
@@ -94,13 +96,23 @@ class RepositoryFactory:
         return CXCDevFactRepository(db=db_session)
 
     async def cleanup(self):
-        """Limpiar recursos del factory"""
+        """Limpiar recursos del factory de forma segura"""
         try:
+            # Cerrar sesión activa primero
+            if self._session is not None:
+                await self._session.close()
+                self._session = None
+
+            # Cerrar session manager
             await self.session_manager.close()
+
         except Exception as e:
             from config.logger import logger
 
-            logger.warning(f"Error cerrando session manager: {e}")
+            logger.warning(f"Error cerrando repository factory: {e}")
+        finally:
+            # Asegurar limpieza completa
+            self._session = None
 
 
 def create_repository_factory() -> RepositoryFactory:

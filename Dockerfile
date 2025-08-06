@@ -22,4 +22,4 @@ COPY . .
 EXPOSE 8000
 
 # 🚀 MÉTODO OFICIAL UV: Usar uv run para ejecutar la aplicación
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000","--use-colors", "--log-config=log_conf.yaml"]
