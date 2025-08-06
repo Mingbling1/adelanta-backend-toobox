@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # 🚀 MÉTODO OFICIAL: Copiar uv desde imagen oficial (más rápido y confiable)
 COPY --from=ghcr.io/astral-sh/uv:0.8.5 /uv /uvx /bin/
