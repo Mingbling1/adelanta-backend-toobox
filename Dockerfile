@@ -1,14 +1,13 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.12-slim-bookworm
 
-# 🚀 Instalar uv para gestión moderna de dependencias
+# 🚀 MÉTODO OFICIAL: Copiar uv desde imagen oficial (más rápido y confiable)
+COPY --from=ghcr.io/astral-sh/uv:0.8.5 /uv /uvx /bin/
+
+# 🔧 Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     locales-all \
     git \
-    curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Instalar uv en paso separado
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
 
@@ -16,12 +15,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # 🏎️ Usar uv sync para instalación determinística y ultra-rápida
-RUN /root/.cargo/bin/uv sync --locked --no-dev
+RUN uv sync --locked --no-dev
 
 COPY . .
 
 EXPOSE 8000
 
-# 🚀 UVICORN OPTIMIZADO PARA 2GB RAM / 2 CORES
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--use-colors", "--log-config=log_conf.yaml"]
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--reload"]
+# 🚀 MÉTODO OFICIAL UV: Usar uv run para ejecutar la aplicación
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
