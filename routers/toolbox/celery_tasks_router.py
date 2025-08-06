@@ -33,13 +33,15 @@ class TaskExecuteResponse(BaseModel):
 
 
 class TaskStatusResponse(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     task_id: str
     status: str
     result: Optional[Any] = None
     ready: bool
     successful: Optional[bool] = None
     failed: Optional[bool] = None
-    error: Optional[str] = None  # Agregar campo para errores
+    error: Optional[str] = None
 
 
 # 🎮 Router de control remoto
@@ -103,15 +105,29 @@ async def get_task_status(task_id: str):
 
         logger.info(f"📊 API: Estado de task {task_id}: {status_info['status']}")
 
+        # Procesar resultado de forma más flexible
+        task_result = status_info.get("result")
+        error_info = None
+
+        # Si hay un resultado y contiene información de error
+        if isinstance(task_result, dict) and task_result.get("status") == "failed":
+            error_info = task_result.get("error", {})
+            if isinstance(error_info, dict):
+                error_msg = f"{error_info.get('error_type', 'Unknown')}: {error_info.get('error_message', 'Unknown error')}"
+            else:
+                error_msg = str(error_info)
+        else:
+            error_msg = status_info.get("error")
+
         # Asegurar que todos los campos opcionales estén presentes
         response_data = {
             "task_id": status_info.get("task_id", task_id),
             "status": status_info.get("status", "UNKNOWN"),
-            "result": status_info.get("result"),
+            "result": task_result,
             "ready": status_info.get("ready", False),
             "successful": status_info.get("successful"),
             "failed": status_info.get("failed"),
-            "error": status_info.get("error"),
+            "error": error_msg,
         }
 
         return TaskStatusResponse(**response_data)

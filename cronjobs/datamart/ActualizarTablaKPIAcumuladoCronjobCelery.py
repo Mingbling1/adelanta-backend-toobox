@@ -59,17 +59,35 @@ class ActualizarTablaKPIAcumuladoCronjobCelery:
 
     def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """
-        Obtener estado de una task de Celery
+        Obtener estado de una task de Celery con manejo robusto de errores
         """
         try:
             from config.celery_config import celery_app
 
             result = celery_app.AsyncResult(task_id)
 
+            # Manejo más cuidadoso del resultado
+            task_result = None
+            if result.ready():
+                try:
+                    task_result = result.result
+                except Exception as result_error:
+                    # Si no se puede obtener el resultado, crear uno sintético
+                    logger.warning(
+                        f"⚠️ No se pudo obtener resultado de task {task_id}: {result_error}"
+                    )
+                    task_result = {
+                        "status": "failed",
+                        "error": {
+                            "error_type": "ResultRetrievalError",
+                            "error_message": str(result_error),
+                        },
+                    }
+
             return {
                 "task_id": task_id,
                 "status": result.status,
-                "result": result.result,
+                "result": task_result,
                 "ready": result.ready(),
                 "successful": result.successful() if result.ready() else None,
                 "failed": result.failed() if result.ready() else None,
@@ -77,4 +95,12 @@ class ActualizarTablaKPIAcumuladoCronjobCelery:
 
         except Exception as e:
             logger.error(f"❌ Error obteniendo estado de task: {str(e)}")
-            return {"task_id": task_id, "status": "ERROR", "error": str(e)}
+            return {
+                "task_id": task_id,
+                "status": "ERROR",
+                "result": None,
+                "ready": False,
+                "successful": None,
+                "failed": None,
+                "error": str(e),
+            }

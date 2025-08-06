@@ -45,9 +45,31 @@ def actualizar_kpi_acumulado_task(self) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"❌ Error en task KPI Acumulado: {str(e)}")
-        # Retry automático de Celery
-        raise self.retry(exc=e)
+        error_msg = f"❌ Error en task KPI Acumulado: {str(e)}"
+        error_type = type(e).__name__
+        logger.error(error_msg)
+
+        # Crear error serializable para Celery
+        serializable_error = {
+            "error_type": error_type,
+            "error_message": str(e),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Intentar retry con error serializable
+        if self.request.retries < self.max_retries:
+            logger.info(
+                f"🔄 Reintentando task (intento {self.request.retries + 1}/{self.max_retries})"
+            )
+            raise self.retry(countdown=60)
+        else:
+            # Si ya no hay más retries, devolver el error serializable
+            logger.error("❌ Máximo de reintentos alcanzado")
+            return {
+                "status": "failed",
+                "error": serializable_error,
+                "timestamp": datetime.now().isoformat(),
+            }
 
 
 async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
