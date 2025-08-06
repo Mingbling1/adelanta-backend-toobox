@@ -5,17 +5,16 @@ RUN apt-get update && apt-get install -y \
     locales-all \
     git \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh
+    && rm -rf /var/lib/apt/lists/*
 
-# Añadir uv al PATH
-ENV PATH="/root/.cargo/bin:$PATH"
+# Instalar uv en paso separado y configurar PATH
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 WORKDIR /app
 
 # 🏎️ Usar uv en lugar de pip para instalación 10x más rápida
 COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN /root/.cargo/bin/uv pip install --system --no-cache -r requirements.txt
 
 COPY . .
 
