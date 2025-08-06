@@ -5,6 +5,7 @@ Migración de cronjobs a tareas de Celery
 
 import asyncio
 import pandas as pd
+import gc
 from datetime import datetime
 from typing import Dict, Any
 
@@ -86,6 +87,7 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
     finally:
         # Limpiar recursos del factory
         await repo_factory.cleanup()
+        gc.collect()
 
 
 @celery_app.task(
@@ -228,3 +230,4 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
     finally:
         # Limpiar recursos del factory
         await repo_factory.cleanup()
+        gc.collect()
