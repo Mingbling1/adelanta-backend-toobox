@@ -1,8 +1,3 @@
-"""
-🔄 Wrapper Celery para ActualizarTablaKPIAcumuladoCronjob
-Mantiene compatibilidad con la interfaz existente
-"""
-
 from typing import Dict, Any
 from background.tasks.toolbox.kpi_acumulado_task import actualizar_kpi_acumulado_task
 from background.processors.base_processor import BaseProcessor
@@ -59,6 +54,3 @@ class KPIAcumuladoProcessor(BaseProcessor):
         except Exception as e:
             logger.error(f"❌ Error ejecutando task síncronamente: {str(e)}")
             raise e
-
-    # ✅ MÉTODO ELIMINADO: get_task_status() ahora se hereda de BaseProcessor
-    # Esto elimina ~50 líneas de código duplicado

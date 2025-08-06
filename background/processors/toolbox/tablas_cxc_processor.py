@@ -1,9 +1,3 @@
-# background/processors/toolbox/tablas_cxc_processor.py
-"""
-🔄 Wrapper Celery para ActualizarTablasCXCCronjob
-Mantiene compatibilidad con la interfaz existente
-"""
-
 from typing import Dict, Any
 from background.tasks.toolbox.tablas_cxc_task import tablas_cxc_task
 from background.processors.base_processor import BaseProcessor

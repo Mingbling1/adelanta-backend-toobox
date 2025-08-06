@@ -1,9 +1,3 @@
-# background/processors/toolbox/tablas_reportes_processor.py
-"""
-🔄 Wrapper Celery para ActualizarTablasReportesCronjob
-Mantiene compatibilidad con la interfaz existente
-"""
-
 from typing import Dict, Any
 from background.tasks.toolbox.tablas_reportes_task import tablas_reportes_task
 from background.processors.base_processor import BaseProcessor

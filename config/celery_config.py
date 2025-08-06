@@ -3,6 +3,7 @@
 """
 
 from celery import Celery
+from celery.schedules import crontab
 from config.settings import settings
 from config.logger import logger
 
@@ -63,12 +64,16 @@ celery_app.conf.update(
         # 📊 Actualización automática de Tablas Reportes - 2 veces al día
         "actualizar-tablas-reportes-manana": {
             "task": "toolbox.tablas_reportes",
-            "schedule": "0 7 * * *",  # Todos los días a las 7:00 AM (GMT-5 Lima)
+            "schedule": crontab(
+                hour=7, minute=0
+            ),  # Todos los días a las 7:00 AM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
         },
         "actualizar-tablas-reportes-tarde": {
             "task": "toolbox.tablas_reportes",
-            "schedule": "0 18 * * *",  # Todos los días a las 6:00 PM (GMT-5 Lima)
+            "schedule": crontab(
+                hour=18, minute=0
+            ),  # Todos los días a las 6:00 PM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
         },
     },
