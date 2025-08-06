@@ -13,7 +13,6 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
     include=[
         "background.tasks.toolbox",  # 🆕 Importar tasks del directorio background
-        "config.celery_tasks",  # Mantener importación legacy para compatibilidad
     ],
 )
 
@@ -39,11 +38,12 @@ celery_app.conf.update(
     # Configuración de resultados
     result_expires=3600,  # Resultados expiran en 1 hora
     task_track_started=True,  # Rastrear cuando las tareas inician
-    # Configuración de routing
+    # Configuración de routing - ACTUALIZADA para nueva estructura
     task_routes={
-        "config.celery_tasks.actualizar_kpi_acumulado_task": {"queue": "cronjobs"},
-        "config.celery_tasks.actualizar_tablas_reportes_task": {"queue": "cronjobs"},
-        "config.celery_tasks.actualizar_cxc_etl_task": {"queue": "cronjobs"},
+        "toolbox.kpi_acumulado": {"queue": "cronjobs"},
+        "toolbox.kpi": {"queue": "cronjobs"},
+        "toolbox.tablas_reportes": {"queue": "cronjobs"},
+        "toolbox.tablas_cxc": {"queue": "cronjobs"},
     },
     # Configuración de colas
     task_default_queue="default",

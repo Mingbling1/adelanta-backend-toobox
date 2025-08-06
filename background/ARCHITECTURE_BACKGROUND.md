@@ -370,9 +370,16 @@ celery_app = Celery(
     "adelanta-toolbox",
     include=[
         "background.tasks.toolbox",  # 🆕 Tasks del directorio background
-        "config.celery_tasks",       # Legacy para compatibilidad
     ],
 )
+
+# Configuración de routing actualizada
+task_routes={
+    "toolbox.kpi_acumulado": {"queue": "cronjobs"},
+    "toolbox.kpi": {"queue": "cronjobs"},
+    "toolbox.tablas_reportes": {"queue": "cronjobs"},
+    "toolbox.tablas_cxc": {"queue": "cronjobs"},
+}
 ```
 
 **📋 Import Centralizado:**
@@ -596,6 +603,32 @@ La carpeta `background/` contiene toda la infraestructura para tareas asíncrona
 -   **Sin conflictos**: Evita choques con la librería `celery`
 
 ## 🛠️ **Troubleshooting y Guías**
+
+### **❌ Error: ModuleNotFoundError: No module named 'config.celery_tasks'**
+
+**🎯 Causa**: Importación legacy de archivo obsoleto que ya fue migrado.
+
+**✅ Solución**:
+
+```python
+# config/celery_config.py - ANTES (❌ Error)
+include=[
+    "background.tasks.toolbox",
+    "config.celery_tasks",  # ❌ Este archivo ya no existe
+]
+
+# config/celery_config.py - DESPUÉS (✅ Correcto)
+include=[
+    "background.tasks.toolbox",  # ✅ Solo directorio nuevo
+]
+```
+
+**📋 Pasos Realizados en la Migración:**
+
+1. ✅ Tasks migradas de `config/celery_tasks.py` → `background/tasks/toolbox/`
+2. ✅ Importación legacy eliminada de `celery_config.py`
+3. ✅ Task routes actualizadas: `toolbox.kpi_acumulado`, `toolbox.kpi`, etc.
+4. ✅ Múltiples archivos separados (mejor práctica organizacional)
 
 ### **❌ Task no aparece en /tasks/available**
 
