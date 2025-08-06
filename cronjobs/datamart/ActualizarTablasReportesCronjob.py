@@ -1,19 +1,13 @@
 from cronjobs.BaseCronjob import BaseCronjob
-
-from utils.adelantafactoring.calculos import KPICalcular
 from repositories.datamart.NuevosClientesNuevosPagadoresRepository import (
     NuevosClientesNuevosPagadoresRepository,
 )
 from utils.adelantafactoring.calculos import NuevosClientesNuevosPagadoresCalcular
-
 from utils.adelantafactoring.calculos import SaldosCalcular
 from repositories.datamart.KPIRepository import KPIRepository
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
 from repositories.datamart.SaldosRepository import SaldosRepository
-
 import pandas as pd
-
-# from utils.timing_decorator import timing_decorator
 from datetime import datetime
 from dependency_injector.wiring import inject, Provide
 from config.container import Container
@@ -22,6 +16,7 @@ from config.redis import redis_client_manager
 from repositories.datamart.ActualizacionReportesRepository import (
     ActualizacionReportesRepository,
 )
+from toolbox.api.kpi_api import get_kpi
 
 
 class ActualizarTablasReportesCronjob(BaseCronjob):
@@ -56,14 +51,18 @@ class ActualizarTablasReportesCronjob(BaseCronjob):
                 tipo_cambio_df["TipoCambioFecha"]
             )
             # KPI
-            kpi_calcular = await KPICalcular(tipo_cambio_df).calcular(
+            kpi_calcular = await get_kpi(
+                tipo_cambio_df=tipo_cambio_df,
                 start_date=BaseCronjob.obtener_datetime_fecha_inicio(),
                 end_date=BaseCronjob.obtener_datetime_fecha_fin(),
                 fecha_corte=BaseCronjob.obtener_datetime_fecha_fin(),
+                tipo_reporte=2,
+                as_df=False,
             )
 
-            await kpi_repository.delete_all()
-            await kpi_repository.create_many(kpi_calcular)
+            await kpi_repository.delete_and_bulk_insert_chunked(
+                kpi_calcular, chunk_size=2000
+            )
 
             # NuevosClientesNuevosPagadores
             nuevos_clientes_nuevos_pagadores_calcular = (
@@ -81,15 +80,15 @@ class ActualizarTablasReportesCronjob(BaseCronjob):
                 )
             )
 
-            nuevos_clientes_nuevos_pagadores_repository.delete_all()
-            await nuevos_clientes_nuevos_pagadores_repository.create_many(
-                nuevos_clientes_nuevos_pagadores_calcular
+            await nuevos_clientes_nuevos_pagadores_repository.delete_and_bulk_insert_chunked(
+                nuevos_clientes_nuevos_pagadores_calcular, chunk_size=2000
             )
             # Saldos
             saldos_calcular = SaldosCalcular().calcular()
 
-            await saldos_repository.delete_all()
-            await saldos_repository.create_many(saldos_calcular)
+            await saldos_repository.delete_and_bulk_insert_chunked(
+                saldos_calcular, chunk_size=2000
+            )
 
             # Obtenemos el timestamp
             now = datetime.now(BaseCronjob.peru_tz)

@@ -39,39 +39,6 @@ class ReferidosPostRequestSchema(BaseModel):
             return None
         return value
 
-    # @field_validator(
-    #     "MontoComisionEstructuracion",
-    #     "ComisionEstructuracionIGV",
-    #     "GastosContrato",
-    #     "GastoVigenciaPoder",
-    #     "ServicioCobranza",
-    #     "ServicioCustodia",
-    #     "MontoPago",
-    #     "MontoPagoSoles",
-    #     "ExcesoPago",
-    #     "DeudaAnterior",
-    #     "MontoDevolucion",
-    #     "DeudaAnterior",
-    #     "ColocacionSoles",
-    #     "IngresosSoles",
-    #     "CostosFondoSoles",
-    #     "TotalIngresosSoles",
-    #     "Utilidad",
-    #     "MontoDesembolsoSoles",
-    #     "tcCompra",
-    #     "tcVenta",
-    #     mode="before",
-    # )
-    # @classmethod
-    # def convert_string_to_zero(cls, value):
-    #     if pd.isna(value):
-    #         return 0
-
-    #     if value in ["", "-"]:
-    #         return 0
-
-    #     return value
-
 
 class ReferidosSchema(ReferidosPostRequestSchema):
     id: int

@@ -29,6 +29,7 @@ from repositories.datamart import (
     CXCPagosFactRepository,
 )
 
+
 class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
@@ -43,7 +44,7 @@ class Container(containers.DeclarativeContainer):
 
     config = providers.Configuration()
 
-    db_session_manager = providers.Singleton(
+    db_session_manager = providers.ThreadSafeSingleton(
         DatabaseSessionManager,
         host=str(settings.DATABASE_MYSQL_URL),
         engine_kwargs={
@@ -97,7 +98,6 @@ class Container(containers.DeclarativeContainer):
         ActualizacionReportesRepository, db=db_session
     )
 
-
     cxc_acumulado_dim_repository = providers.Singleton(
         CXCAcumuladoDIMRepository, db=db_session
     )
@@ -105,8 +105,7 @@ class Container(containers.DeclarativeContainer):
     cxc_pagos_fact_repository = providers.Singleton(
         CXCPagosFactRepository, db=db_session
     )
-    cxc_dev_fact_repository = providers.Singleton(
-        CXCDevFactRepository, db=db_session
-    )
+    cxc_dev_fact_repository = providers.Singleton(CXCDevFactRepository, db=db_session)
+
 
 container = Container()

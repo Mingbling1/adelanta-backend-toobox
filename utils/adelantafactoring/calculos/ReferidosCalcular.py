@@ -1,4 +1,4 @@
-import unicodedata
+# import unicodedata
 import pandas as pd
 from typing import Union
 from .BaseCalcular import BaseCalcular

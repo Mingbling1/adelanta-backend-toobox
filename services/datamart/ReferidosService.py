@@ -9,12 +9,11 @@ import pandas as pd
 from fastapi.responses import StreamingResponse
 import io
 from io import BytesIO
-from utils.adelantafactoring.calculos.ComisionesCalcular import ComisionesCalcular
-from config.logger import logger
 import calendar
 from datetime import datetime
 from models.datamart.TipoCambioModel import TipoCambioModel
 from utils.decorators import create_job
+from toolbox.api.comisiones_api import ComisionesAPI
 
 
 class ReferidosService:
@@ -60,7 +59,7 @@ class ReferidosService:
     @create_job(
         name="Calcular Comisiones",
         description="Generar un zip con las comisiones de los referidos",
-        expire=60 * 10 * 1,  # 30 minutos
+        expire=60 * 10 * 1,  # 10 minutos
         is_buffer=True,
         save_as="zip",
         capture_params=True,
@@ -96,11 +95,13 @@ class ReferidosService:
         # preservamos el orden de columnas según el primer dict
         cols = list(rows[0].keys()) if rows else []
         kpi_df = pd.DataFrame(rows, columns=cols)
-        comisiones = ComisionesCalcular(
+        comisiones = ComisionesAPI(
             kpi_df=kpi_df,
         )
         start_date, end_date = format_date_range(primer_dia, ultimo_dia)
-        zip_bytes = comisiones.calcular(start_date=start_date, end_date=end_date)
+        zip_bytes = comisiones.calcular_comisiones(
+            start_date=start_date, end_date=end_date
+        )
         return zip_bytes
 
     async def get_all_to_csv(self):

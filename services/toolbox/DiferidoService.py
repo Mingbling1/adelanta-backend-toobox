@@ -4,10 +4,7 @@ from fastapi import Depends, UploadFile
 import pandas as pd
 
 
-from utils.adelantafactoring.v2.api.diferido_api import (
-    DiferidoCalcularV2 as DiferidoCalcular,
-)
-
+from utils.adelantafactoring.calculos.diferido.DiferidoCalcular import DiferidoCalcular
 from utils.decorators import create_job
 from io import BytesIO
 from config.logger import logger

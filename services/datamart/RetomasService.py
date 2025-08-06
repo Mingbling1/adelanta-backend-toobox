@@ -1,6 +1,6 @@
 from repositories.datamart.RetomasRepository import RetomasRepository
 from fastapi import Depends
-from utils.adelantafactoring.v2.api.retomas_api import RetomasAPI
+from utils.adelantafactoring.calculos.RetomasCalcular import RetomasCalcular
 from datetime import datetime
 from repositories.datamart.KPIAcumuladoRepository import KPIAcumuladoRepository
 import pandas as pd
@@ -42,10 +42,10 @@ class RetomasService:
             await self.kpi_acumulado_repository.get_all_dicts(exclude_pk=True)
         )
 
-        # Crear la instancia de RetomasAPI pasando el DataFrame
-        retomas_calcular = RetomasAPI(kpi_acumulado_df)
+        # Crear la instancia de RetomasCalcular pasando el DataFrame
+        retomas_calcular = RetomasCalcular(kpi_acumulado_df)
         resultado_retomas_calcular_df = (
-            await retomas_calcular.calcular_retomas_raw_async(fecha_corte, to_df=True)
+            await retomas_calcular.calcular_retomas_async(fecha_corte, to_df=True)
         )
         excel_buffer = BytesIO()
         await self.actualizar_tabla_retoma_cronjob.run(fecha_corte=fecha_corte)

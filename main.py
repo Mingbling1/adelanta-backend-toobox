@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from config.cronjob import cronjob_manager
 import time
 import pytz
 from config.db_mysql import sessionmanager
@@ -17,6 +16,7 @@ from routers.datamart import (
 )  # DATAMART
 from routers.toolbox import DiferidoRouter  # TOOLBOX
 from routers.toolbox import VentasAutodetraccionesRouter  # TOOLBOX
+from routers.toolbox import celery_tasks_router  # CELERY TASKS
 from routers.auth import (
     UsuarioRouter,
     AuthRouter,
@@ -34,7 +34,6 @@ from routers.administrativo import (
 from routers.sunat import SunatRouter
 from routers.master import TablaMaestraDetalleRouter, TablaMaestraRouter  # MASTER
 from routers.crm import SolicitudLeadRouter  # CRM
-from cronjobs.BaseCronjob import BaseCronjob
 from config.container import container
 from fastapi.responses import ORJSONResponse
 
@@ -48,11 +47,15 @@ async def app_lifespan(app: FastAPI):
 
     container.init_resources()
 
+    # 🔄 MIGRACIÓN CELERY: Comentamos cronjobs automáticos
     # cronjob_manager.wakeup()
-    BaseCronjob.register_all_cronjobs()
-    await cronjob_manager.start()
+    # BaseCronjob.register_all_cronjobs()
+    # await cronjob_manager.start()
+
+    logger.info("🎮 Servidor iniciado con control remoto de tasks via API")
     yield
-    await cronjob_manager.shutdown()
+
+    # await cronjob_manager.shutdown()
     logger.info("Servidor detenido")
 
     if sessionmanager._engine is not None:
@@ -109,6 +112,13 @@ app.include_router(
     VentasAutodetraccionesRouter.router,
     prefix="/toolbox" + "/ventasAutodetracciones",
     tags=["Toolbox"],
+)
+
+# CELERY TASKS
+app.include_router(
+    celery_tasks_router.router,
+    prefix="/toolbox",
+    tags=["🎮 Celery Tasks"],
 )
 # AUTH
 app.include_router(AuthRouter.router, prefix="/auth", tags=["Auth"])

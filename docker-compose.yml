@@ -77,3 +77,43 @@ services:
             options:
                 max-file: "1"
                 max-size: "100k"
+
+    celery-worker:
+        image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
+        container_name: celery_worker
+        env_file:
+            - ./.env
+        command: celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=4 --pool=prefork
+        restart: unless-stopped
+        volumes:
+            - ./templates:/app/templates
+        environment:
+            - REDIS_URL=redis://redis:6379/0
+        depends_on:
+            - redis
+            - web
+        logging:
+            driver: "json-file"
+            options:
+                max-file: "1"
+                max-size: "100k"
+
+    celery-beat:
+        image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
+        container_name: celery_beat
+        env_file:
+            - ./.env
+        command: celery -A config.celery_config beat --loglevel=info
+        restart: unless-stopped
+        volumes:
+            - ./templates:/app/templates
+        environment:
+            - REDIS_URL=redis://redis:6379/0
+        depends_on:
+            - redis
+            - celery-worker
+        logging:
+            driver: "json-file"
+            options:
+                max-file: "1"
+                max-size: "100k"

@@ -1,14 +1,15 @@
 from repositories.datamart.KPIAcumuladoRepository import KPIAcumuladoRepository
 from models.datamart.KPIAcumuladoModel import KPIAcumuladoModel
 from fastapi import Depends
-import pandas as pd
+import polars as pl
 from typing import Literal
 from utils.decorators import create_job
 from io import BytesIO
 import asyncio
+from services.BaseService import BaseService
 
 
-class KPIAcumuladoService:
+class KPIAcumuladoService(BaseService[KPIAcumuladoModel]):
     def __init__(self, kpi_acumulado_repository: KPIAcumuladoRepository = Depends()):
         self.kpi_acumulado_repository = kpi_acumulado_repository
 
@@ -36,12 +37,15 @@ class KPIAcumuladoService:
         tipo: Literal["excel", "csv"] = "excel",
         informe: str | None = None,
     ) -> BytesIO:
-        # 1) Traer todos los registros como lista de dicts (sin pk)
-        rows = await self.kpi_acumulado_repository.get_all_dicts(exclude_pk=True)
+        data_dicts = await self.kpi_acumulado_repository.get_all_dicts(exclude_pk=True)
 
-        # 2) Construir el DataFrame en un hilo
         def _build_df():
-            df = pd.DataFrame(rows) if rows else pd.DataFrame()
+            if not data_dicts:
+                return pl.DataFrame()
+
+            # Convertir data_dicts a DataFrame con schema inferido más flexible
+            df = pl.DataFrame(data_dicts, infer_schema_length=None)
+
             if informe:
                 columnas_esperadas = [
                     "CodigoLiquidacion",
@@ -130,21 +134,19 @@ class KPIAcumuladoService:
 
                 for col in columnas_esperadas:
                     if col not in df.columns:
-                        df[col] = None
-                df = df[columnas_esperadas]
+                        df = df.with_columns(pl.lit(None).alias(col))
+                df = df.select(columnas_esperadas)
             return df
 
         df = await asyncio.to_thread(_build_df)
 
-        # 3) Escribir el buffer en un hilo
         def _write_buffer() -> BytesIO:
             buf = BytesIO()
             if tipo.lower() == "csv":
-                csv_text = df.to_csv(index=False)
-                buf.write(csv_text.encode("utf-8"))
+                csv_content = df.write_csv()
+                buf.write(csv_content.encode("utf-8"))
             else:
-                with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
-                    df.to_excel(writer, index=False, sheet_name="Sheet1")
+                df.write_excel(workbook=buf)
             buf.seek(0)
             return buf
 

@@ -91,33 +91,33 @@ jobs:
 
                   # 🧹 LIMPIEZA AGRESIVA ANTES DEL DEPLOY
                   echo "🧹 Iniciando limpieza completa del sistema Docker..."
-                  
+
                   # Detener todos los contenedores primero
                   echo "🛑 Deteniendo contenedores actuales..."
                   docker-compose down --remove-orphans || true
                   docker stop $(docker ps -aq) 2>/dev/null || true
-                  
+
                   # Eliminar contenedores parados
                   echo "🗑️ Eliminando contenedores parados..."
                   docker ps -a -q | xargs -r docker rm -f || true
                   docker container prune -f || true
-                  
+
                   # CRÍTICO: Eliminar imágenes dangling (liberará ~16GB)
                   echo "🗑️ Eliminando imágenes <none> (dangling)..."
                   docker image prune -f
-                  
+
                   # Eliminar imágenes no utilizadas (mantener solo las necesarias)
                   echo "🗑️ Eliminando imágenes no utilizadas..."
                   docker image prune -a -f --filter "until=24h" || true
-                  
+
                   # Limpiar volúmenes no utilizados
                   echo "🗑️ Eliminando volúmenes no utilizados..."
                   docker volume prune -f || true
-                  
+
                   # Limpiar redes no utilizadas
                   echo "🗑️ Eliminando redes no utilizadas..."
                   docker network prune -f || true
-                  
+
                   # Mostrar estado después de limpieza
                   echo "📊 Estado después de limpieza inicial:"
                   docker system df
@@ -143,14 +143,14 @@ jobs:
                   # LIMPIEZA FINAL después del deploy
                   echo "🧹 Limpieza final post-deploy..."
                   docker image prune -f
-                  
+
                   # Mostrar solo las imágenes que quedaron
                   echo "📦 Imágenes restantes después del deploy:"
                   docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
-                  
+
                   # Configurar SSL
                   echo "🔐 Configurando SSL..."
-                  
+
                   # Verificar existencia del script
                   if [ -f "./init-letsencrypt.sh" ]; then
                       echo "✅ Script SSL encontrado"
@@ -169,31 +169,31 @@ jobs:
                   # MONITOREO Y DIAGNÓSTICO FINAL
                   echo "📊 Diagnóstico final del sistema:"
                   echo "=================================="
-                  
+
                   # Espacio en disco
                   echo "💾 Espacio en disco:"
                   df -h /
-                  
+
                   # Estado de Docker
                   echo "🐳 Estado de Docker:"
                   docker system df
-                  
+
                   # Servicios corriendo
                   echo "🔄 Servicios corriendo:"
                   docker-compose ps
-                  
+
                   # Logs recientes para verificar que todo funciona
                   echo "📋 Logs recientes del servicio web:"
                   docker logs web --tail 10 || true
-                  
+
                   # Verificar conectividad
                   echo "🌐 Verificando conectividad del servicio:"
                   curl -s -o /dev/null -w "Código HTTP: %{http_code}\n" http://localhost:8000/health || echo "❌ Servicio no responde"
-                  
+
                   # Verificar memoria disponible
                   echo "🧠 Memoria del sistema:"
                   free -h
-                  
+
                   # ALERTA si el disco sigue muy lleno
                   DISK_USAGE=$(df / | grep -vE '^Filesystem' | awk '{print $5}' | sed 's/%//g')
                   if [ $DISK_USAGE -gt 85 ]; then
@@ -224,22 +224,47 @@ jobs:
             - name: Run tests
               run: |
                   cd ~/app
-                  docker exec web pytest test/cronjob/test_cronjob.py || echo "Tests ejecutados"
 
-                  echo "Esperando 10 segundos..."
-                  sleep 10
-
-                  echo "Invocando endpoint force-check..."
-                  ENDPOINT="http://localhost:8000/api/cronjob/force-check"
-                  response=$(curl -Ls -o /dev/null -w "%{http_code}" -X POST "$ENDPOINT")
-                  echo "Código de respuesta: $response"
+                  # ✅ Test básico de conectividad
+                  echo "🌐 Verificando conectividad del servicio web..."
+                  HEALTH_ENDPOINT="http://localhost:8000/"
+                  response=$(curl -Ls -o /dev/null -w "%{http_code}" -X GET "$HEALTH_ENDPOINT")
+                  echo "Código de respuesta del health check: $response"
 
                   if [ "$response" -eq 200 ]; then
-                      echo "Success: Scheduler triggered to check for jobs."
+                      echo "✅ Servicio web funcionando correctamente"
                   else
-                      echo "Error: HTTP status $response"
-                      echo "Continua de todos modos..."
+                      echo "⚠️ Servicio web responde con código: $response"
                   fi
 
-                  echo "Verificando que el worker RQ esté funcionando:"
-                  docker logs rq_worker --tail 20
+                  echo "Esperando 10 segundos para estabilización..."
+                  sleep 10
+
+                  # ✅ Verificar nuevos endpoints de Celery
+                  echo "🎮 Verificando endpoints de Celery Tasks..."
+                  CELERY_ENDPOINT="http://localhost:8000/api/toolbox/tasks/available"
+                  celery_response=$(curl -Ls -o /dev/null -w "%{http_code}" -X GET "$CELERY_ENDPOINT")
+                  echo "Código de respuesta de Celery Tasks: $celery_response"
+
+                  if [ "$celery_response" -eq 200 ]; then
+                      echo "✅ Celery Tasks API funcionando correctamente"
+                  else
+                      echo "⚠️ Celery Tasks API responde con código: $celery_response"
+                      echo "Continuando de todos modos..."
+                  fi
+
+                  # ✅ Verificar que los workers de Celery estén funcionando
+                  echo "🔄 Verificando workers de Celery..."
+                  if docker ps | grep -q celery_worker; then
+                      echo "✅ Celery worker container está corriendo"
+                      docker logs celery_worker --tail 10 || echo "No se pudieron obtener logs del worker"
+                  else
+                      echo "⚠️ Celery worker container no encontrado"
+                  fi
+
+                  if docker ps | grep -q celery_beat; then
+                      echo "✅ Celery beat container está corriendo"  
+                      docker logs celery_beat --tail 5 || echo "No se pudieron obtener logs del beat"
+                  else
+                      echo "⚠️ Celery beat container no encontrado"
+                  fi

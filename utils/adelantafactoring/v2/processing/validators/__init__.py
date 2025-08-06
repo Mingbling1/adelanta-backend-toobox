@@ -1,3 +1,0 @@
-"""
-✅ Módulo Validators V2
-"""

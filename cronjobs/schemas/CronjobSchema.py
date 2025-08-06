@@ -60,6 +60,11 @@ class ActualizarCXCETLCronjobSchema(BaseModel):
     job_id: Literal["actualizarcxcetlcronjob"]
 
 
+# === NUEVO SCHEMA PARA CELERY ===
+class ActualizarTablaKPIAcumuladoCeleryConfigSchema(BaseModel):
+    job_id: Literal["actualizartablakpiacumuladocronjobcelery"]
+
+
 class CronjobSchema(CronjobConfigSchema):
     cronjob_config: Union[
         ActualizarTablaRetomaConfigSchema,
@@ -68,6 +73,7 @@ class CronjobSchema(CronjobConfigSchema):
         ActualizarTipoCambioCronjobConfigSchema,
         ActualizarTablasCXCConfigSchema,
         ActualizarCXCETLCronjobSchema,
+        ActualizarTablaKPIAcumuladoCeleryConfigSchema,
     ] = Field(..., discriminator="job_id")
 
 
@@ -79,4 +85,5 @@ class CronjobNowSchema(BaseModel):
         ActualizarTipoCambioCronjobConfigSchema,
         ActualizarTablasCXCConfigSchema,
         ActualizarCXCETLCronjobSchema,
+        ActualizarTablaKPIAcumuladoCeleryConfigSchema,
     ] = Field(..., discriminator="job_id")

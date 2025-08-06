@@ -9,10 +9,13 @@ from utils.decorators import create_job
 from io import BytesIO
 from typing import Literal
 import asyncio
-import pandas as pd
+import polars as pl
+from services.BaseService import BaseService
 
 
-class NuevosClientesNuevosPagadoresService:
+class NuevosClientesNuevosPagadoresService(
+    BaseService[NuevosClientesNuevosPagadoresModel]
+):
     def __init__(
         self,
         nuevos_clientes_nuevos_pagadores_repository: NuevosClientesNuevosPagadoresRepository = Depends(),
@@ -30,32 +33,29 @@ class NuevosClientesNuevosPagadoresService:
         capture_params=True,
     )
     async def get_all_to_file(self, tipo: Literal["excel", "csv"] = "excel") -> BytesIO:
-        # 1) Traer todos los registros
-        records: list[NuevosClientesNuevosPagadoresModel] = (
-            await self.nuevos_clientes_nuevos_pagadores_repository.get_all(
-                limit=None, offset=0
-            )
+        # Obtener datos de la base de datos
+        data_dicts = (
+            await self.nuevos_clientes_nuevos_pagadores_repository.get_all_dicts()
         )
 
-        # 2) Construir el DataFrame en un hilo
-        def _build_df():
-            df = pd.DataFrame([r.to_dict() for r in records])
-            return df
+        # Crear DataFrame con polars para mejor performance
+        df = pl.DataFrame(data_dicts)
 
-        # 3) Guardar el DataFrame en un buffer
-        df = await asyncio.to_thread(_build_df)
-
-        # 3) Escribir el buffer en un hilo
         def _write_buffer() -> BytesIO:
+            """Función para escribir el buffer usando polars"""
             buf = BytesIO()
+
             if tipo.lower() == "csv":
-                csv_text = df.to_csv(index=False)
-                buf.write(csv_text.encode("utf-8"))
+                # Escribir CSV con polars
+                csv_content = df.write_csv()
+                buf.write(csv_content.encode("utf-8"))
             else:
-                with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
-                    df.to_excel(writer, index=False, sheet_name="Sheet1")
+
+                df.write_excel(workbook=buf)
+
             buf.seek(0)
             return buf
 
+        # Ejecutar en thread separado para operaciones I/O
         buffer = await asyncio.to_thread(_write_buffer)
         return buffer

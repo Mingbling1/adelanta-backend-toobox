@@ -2,14 +2,12 @@ from repositories.toolbox.VentasAutodetraccionesRepository import (
     VentasAutodetraccionesRepository,
 )
 from fastapi import Depends, UploadFile
-import pandas as pd
 from utils.decorators import create_job
 from io import BytesIO
 from config.logger import logger
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
-from utils.adelantafactoring.v2.api.ventas_autodetraccion_api import (
-    VentasAutodetraccionesAPI,
-)
+from toolbox.api.ventas_autodetracciones_api import VentasAutodetraccionesAPI
+import polars as pl
 
 
 class VentasAutodetraccionesService:
@@ -47,14 +45,12 @@ class VentasAutodetraccionesService:
             hasta: str, persistente_file: BytesIO, archivo_nombre: str
         ) -> BytesIO:
 
-            tipo_cambio_df = pd.DataFrame(
+            tipo_cambio_df = pl.DataFrame(
                 await self.tipo_cambio_repository.get_all_dicts(exclude_pk=True)
             )
-            # Leer el archivo de comprobantes (por ejemplo, un Excel)
-            comprobantes_df = pd.read_excel(persistente_file, skiprows=2)
-            # Instanciar la clase de cálculo pasándole los DataFrames necesarios
+
             calculador = VentasAutodetraccionesAPI(
-                tipo_cambio_df=tipo_cambio_df, comprobantes_df=comprobantes_df
+                tipo_cambio_df=tipo_cambio_df, comprobantes_file=persistente_file
             )
             # Generar el Excel filtrado por 'hasta' (YYYY-MM)
             excel_buffer = await calculador.generar_excel_autodetraccion(hasta)

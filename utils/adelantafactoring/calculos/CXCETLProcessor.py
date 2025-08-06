@@ -1,6 +1,7 @@
 from typing import Dict, Tuple, List
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from config.logger import logger
 from utils.adelantafactoring.calculos.KPICalcular import KPICalcular
 from ..schemas.CXCAcumuladoDIMCalcularSchema import CXCAcumuladoDIMCalcularSchema
@@ -11,16 +12,186 @@ from utils.adelantafactoring.calculos.CXCAcumuladoDIMCalcular import (
 )
 from utils.adelantafactoring.calculos.CXCPagosFactCalcular import CXCPagosFactCalcular
 from utils.adelantafactoring.calculos.CXCDevFactCalcular import CXCDevFactCalcular
+from utils.adelantafactoring.calculos.SectorPagadoresCalcular import (
+    SectorPagadoresCalcular,
+)
 from .BaseCalcular import BaseCalcular
 
 
 class CXCETLProcessor(BaseCalcular):
     """🚀 PROCESADOR ETL COMPLETO CXC - ULTRA EFICIENTE CON PYDANTIC RUST"""
 
+    # === CONSTANTES PARA ETL POWER BI ===
+    # Códigos de liquidación para clasificaciones especiales (copiadas de CXCAcumuladoDIMCalcular)
+    CODIGOS_MORA_MAYO = [
+        "LIQ002-2021",
+        "LIQ010-2022",
+        "LIQ095-2022",
+        "LIQ122-2022",
+        "LIQ147-2022",
+        "LIQ149-2022",
+        "LIQ188-2022",
+        "LIQ213-2022",
+        "LIQ2211000149",
+        "LIQ221-2022",
+        "LIQ2302000043",
+        "LIQ2302000044",
+        "LIQ2303000070",
+        "LIQ2303000082",
+        "LIQ2303000129",
+        "LIQ2303000144",
+        "LIQ2304000013",
+        "LIQ2304000031",
+        "LIQ2304000107",
+        "LIQ2304000117",
+        "LIQ2304000123",
+        "LIQ2306000105",
+        "LIQ2307000164",
+        "LIQ2308000014",
+        "LIQ2308000077",
+        "LIQ2308000126",
+        "LIQ2308000137",
+        "LIQ2308000139",
+        "LIQ2308000189",
+        "LIQ2310000033",
+        "LIQ2310000036",
+        "LIQ2310000072",
+        "LIQ2310000082",
+        "LIQ2310000093",
+        "LIQ2310000164",
+        "LIQ2310000186",
+        "LIQ2310000192",
+        "LIQ2310000193",
+        "LIQ2311000129",
+        "LIQ2311000130",
+        "LIQ2311000131",
+        "LIQ2311000133",
+        "LIQ2311000134",
+        "LIQ2311000233",
+        "LIQ2312000022",
+        "LIQ2312000097",
+        "LIQ2312000135",
+        "LIQ2312000144",
+        "LIQ2312000145",
+        "LIQ2312000146",
+        "LIQ2312000154",
+        "LIQ2312000183",
+        "LIQ2312000197",
+        "LIQ2401000066",
+        "LIQ2401000125",
+        "LIQ2401000126",
+        "LIQ2401000132",
+        "LIQ2401000133",
+        "LIQ2401000161",
+        "LIQ2401000163",
+        "LIQ2401000164",
+        "LIQ2402000088",
+        "LIQ2402000112",
+        "LIQ2403000197",
+        "LIQ2404000017",
+        "LIQ2404000030",
+        "LIQ2404000125",
+        "LIQ2404000156",
+        "LIQ385-2022",
+        "LIQ434-2021",
+        "LIQ526-2021",
+        "LIQ557-2021",
+        "LIQ583-2021",
+        "LIQ601-2021",
+        "LIQ662-2021",
+        "LIQ701-2021",
+        "LIQ003-2022 ME",
+        "LIQ014-2022 ME",
+        "LIQ088-2021 ME",
+        "LIQ128-2021 ME",
+        "LIQ189-2022 ME",
+        "LIQ199-2022 ME",
+        "LIQ214-2021 ME",
+        "LIQ2209000088",
+        "LIQ2211000078",
+        "LIQ2303000131",
+        "LIQ2303000157",
+        "LIQ2304000075",
+        "LIQ2304000081",
+        "LIQ2304000158",
+        "LIQ2304000173",
+        "LIQ2306000039",
+        "LIQ2310000047",
+        "LIQ2310000180",
+        "LIQ2311000132",
+        "LIQ2311000237",
+        "LIQ2312000147",
+        "LIQ2312000148",
+        "LIQ2312000150",
+        "LIQ2312000213",
+        "LIQ2401000056",
+        "LIQ2401000127",
+        "LIQ2401000162",
+        "LIQ2401000210",
+        "LIQ2402000184",
+        "LIQ2403000037",
+        "LIQ2403000107",
+        "LIQ2403000128",
+        "LIQ2403000153",
+        "LIQ2403000176",
+    ]
+
+    CODIGOS_COBRANZA_ESPECIAL = [
+        "LIQ2302000034",
+        "LIQ2309000157",
+        "LIQ2307000196",
+        "LIQ314-2021",
+        "LIQ043-2021 ME",
+        "LIQ023-2020 ME",
+        "LIQ2401000124",
+        "LIQ2305000186",
+        "LIQ297-2021",
+        "LIQ034-2021 ME",
+        "LIQ248-2021 ME",
+        "LIQ127-2022",
+        "LIQ432-2021",
+        "LIQ138-2021 ME",
+        "LIQ451-2022",
+        "LIQ2401000099",
+        "LIQ2312000022",
+        "LIQ2301000063",
+        "LIQ2310000055",
+        "LIQ2307000122",
+        "LIQ2302000142",
+        "LIQ2403000021",
+        "LIQ2405000159",
+        "LIQ2405000095",
+        " LIQ2302000033",
+        "LIQ2307000195",
+        "LIQ2307000211",
+        "LIQ313-2021-2",
+        "LIQ2401000064",
+        "LIQ2305000140",
+        "LIQ296-2021",
+        "LIQ251-2021 ME",
+        "LIQ108-2022",
+        "LIQ336-2021",
+        "LIQ093-2021 ME",
+        "LIQ2312000071",
+        "LIQ2312000097",
+        "LIQ2212000020",
+        "LIQ2309000172",
+        "LIQ2403000038",
+        "LIQ2405000158",
+        "LIQ2211000152",
+        "LIQ2308000058",
+        "LIQ2401000058",
+        "LIQ057-2021",
+        "LIQ254-2021 ME",
+    ]
+
     def __init__(self, tipo_cambio_df: pd.DataFrame):
         super().__init__()
         self.tipo_cambio_df = tipo_cambio_df
         self.kpi_calculator = KPICalcular(tipo_cambio_df)
+        self.sector_sector_pagadores_calcular = SectorPagadoresCalcular()
+        # Fecha de corte para ETL Power BI (fecha actual por defecto)
+        self.fecha_corte = datetime.now().date()
 
     async def procesar_todo_cxc(self) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         try:
@@ -62,6 +233,8 @@ class CXCETLProcessor(BaseCalcular):
                 df_pagos_procesado_fuera_sistema,
                 df_dev_procesado_fuera_sistema,
             ) = await self._procesar_operaciones_fuera_sistema(df_acumulado_procesado)
+
+            df_acumulado_procesado.to_excel("cxc_acumulado_procesado.xlsx", index=False)
 
             # df_pagos_procesado_fuera_sistema.to_excel(
             #     "cxc_pagos_procesado_fuera_sistema.xlsx", index=False
@@ -106,7 +279,7 @@ class CXCETLProcessor(BaseCalcular):
             df = self._formatear_campos(df)
             df = self._calcular_referidos(df)
             df = self._calcular_kpis(df)
-            df = self._aplicar_etl_power_bi_cxc(df)
+            df = self._aplicar_etl_power_bi_cxc(df, df_pagos)
             return df
         except Exception as e:
             logger.error(f"❌ Error procesando CXCAcumuladoDIM: {e}")
@@ -114,7 +287,6 @@ class CXCETLProcessor(BaseCalcular):
 
     def _validar_columnas_minimas(self, df: pd.DataFrame) -> pd.DataFrame:
         return self.kpi_calculator._validar_columnas_minimas(df)
-
 
     async def _fusionar_fuera_sistema(self, df: pd.DataFrame) -> pd.DataFrame:
         return self.kpi_calculator._fusionar_fuera_sistema(df, date_format="%Y-%m-%d")
@@ -280,33 +452,233 @@ class CXCETLProcessor(BaseCalcular):
 
         return df
 
-    def _aplicar_etl_power_bi_cxc(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _aplicar_etl_power_bi_cxc(
+        self, df: pd.DataFrame, df_pagos: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        🚀 Aplica ETL Power BI completo para CXC - REPLICANDO EXACTAMENTE POWER BI
+
+        Este método obtiene los datos de pagos y sector automáticamente y aplica
+        toda la lógica de transformación de Power BI.
+        """
+
+        logger.info("🚀 Iniciando ETL Power BI completo para CXC...")
+
+        # === PASO 0: OBTENER DATOS NECESARIOS ===
+        tipo_cambio = self._obtener_tipo_cambio_actual()
+
+        # Obtener datos de sector desde el KPI calculator
+        logger.debug("🏢 Obteniendo datos de sector...")
         try:
-            tipo_cambio = self._obtener_tipo_cambio_actual()
-
-            df["SaldoTotal"] = np.where(
-                df.get("TipoPago", "") == "PAGO PARCIAL",
-                df.get("SaldoDeuda", 0),
-                np.where(
-                    (df.get("TipoPago", "").isna()) | (df.get("TipoPago", "") == ""),
-                    df["NetoConfirmado"],
-                    df["NetoConfirmado"] - df.get("MontoPago", 0),
-                ),
-            )
-
-            df["SaldoTotalPen"] = np.where(
-                df["Moneda"] == "PEN", df["SaldoTotal"], df["SaldoTotal"] * tipo_cambio
-            )
-            df["TipoPagoReal"] = df.get("TipoPago", "").fillna("")
-            df["EstadoCuenta"] = "VIGENTE"
-            df["EstadoReal"] = "VIGENTE"
-            df["SaldoTotal"] = df["SaldoTotal"].fillna(0.0)
-            df["SaldoTotalPen"] = df["SaldoTotalPen"].fillna(0.0)
-
-            return df
+            df_sector = self.sector_pagadores_calcular.calcular_df()
+            logger.debug(f"   ✅ Sectores obtenidos: {len(df_sector)} registros")
         except Exception as e:
-            logger.error(f"❌ Error en ETL Power BI CXC: {e}")
-            raise
+            logger.warning(f"⚠️ Error obteniendo sectores: {e}, usando DataFrame vacío")
+            df_sector = pd.DataFrame()
+
+        # === APLICAR ETL COMPLETO ===
+        df_resultado = self.aplicar_etl_power_bi(
+            df_acumulado=df,
+            df_pagos=df_pagos,
+            df_sector=df_sector,
+            tipo_cambio=tipo_cambio,
+        )
+
+        logger.info(
+            f"✅ ETL Power BI completado: {len(df_resultado)} registros procesados"
+        )
+        return df_resultado
+
+    def aplicar_etl_power_bi(
+        self,
+        df_acumulado: pd.DataFrame,
+        df_pagos: pd.DataFrame,
+        df_sector: pd.DataFrame,
+        tipo_cambio: float,
+    ) -> pd.DataFrame:
+        """
+        🎯 Aplica el ETL completo replicando exactamente Power BI.
+
+        COPIADO EXACTAMENTE DE CXCAcumuladoDIMCalcular para máxima compatibilidad.
+
+        Args:
+            df_acumulado: DataFrame de datos acumulados
+            df_pagos: DataFrame de pagos
+            df_sector: DataFrame de sectores
+            tipo_cambio: Tipo de cambio actual
+
+        Returns:
+            DataFrame con ETL aplicado
+        """
+        # === PASO 1: JOIN CON PAGOS (temporal para cálculos) ===
+        # Hacer LEFT JOIN para obtener datos de pagos solo para cálculo
+        logger.debug("=== DEBUGGING df_pagos ===")
+        logger.debug(f"df_pagos.empty: {df_pagos.empty}")
+        if not df_pagos.empty:
+            logger.debug(f"df_pagos.shape: {df_pagos.shape}")
+            logger.debug(f"df_pagos.columns: {list(df_pagos.columns)}")
+
+        if not df_pagos.empty and "IdLiquidacionDet" in df_pagos.columns:
+            required_cols = ["IdLiquidacionDet", "TipoPago", "MontoPago", "SaldoDeuda"]
+            # Verificar que las columnas existen
+            available_cols = [col for col in required_cols if col in df_pagos.columns]
+
+            if len(available_cols) >= 2:  # Al menos IdLiquidacionDet + una más
+                # Seleccionar y renombrar las columnas de pagos para el merge
+                pagos_subset = df_pagos[available_cols].copy()
+
+                # RENOMBRAR MANUALMENTE las columnas para agregar "_temp"
+                rename_dict = {}
+                for col in available_cols:
+                    if col != "IdLiquidacionDet":
+                        rename_dict[col] = f"{col}_temp"
+
+                pagos_subset = pagos_subset.rename(columns=rename_dict)
+
+                logger.debug(
+                    f"Columnas de pagos después de renombrar: {list(pagos_subset.columns)}"
+                )
+
+                # Hacer el merge sin suffixes ya que ya renombramos
+                df_merged = df_acumulado.merge(
+                    pagos_subset, on="IdLiquidacionDet", how="left"
+                )
+
+                logger.debug(
+                    f"df_merged.columns después de merge: {list(df_merged.columns)}"
+                )
+
+                # Verificar que las columnas temporales se crearon
+                temp_cols = [col for col in df_merged.columns if col.endswith("_temp")]
+                logger.debug(f"Columnas temporales creadas: {temp_cols}")
+
+                # Limpiar los valores nulos que puedan haber resultado del LEFT JOIN
+                for col in ["TipoPago_temp", "MontoPago_temp", "SaldoDeuda_temp"]:
+                    if col in df_merged.columns:
+                        if "TipoPago" in col:
+                            df_merged[col] = df_merged[col].fillna("")
+                        else:
+                            df_merged[col] = pd.to_numeric(
+                                df_merged[col], errors="coerce"
+                            ).fillna(0.0)
+            else:
+                logger.warning(
+                    "Columnas insuficientes en df_pagos, usando valores por defecto"
+                )
+                df_merged = df_acumulado.copy()
+                df_merged["TipoPago_temp"] = ""
+                df_merged["MontoPago_temp"] = 0.0
+                df_merged["SaldoDeuda_temp"] = 0.0
+        else:
+            logger.warning(
+                "DataFrame de pagos vacío o sin columna IdLiquidacionDet, usando valores por defecto"
+            )
+            df_merged = df_acumulado.copy()
+            df_merged["TipoPago_temp"] = ""
+            df_merged["MontoPago_temp"] = 0.0
+            df_merged["SaldoDeuda_temp"] = 0.0
+
+        # === PASO 2: JOIN CON SECTOR ===
+        # Hacer LEFT JOIN con sector pagadores
+
+        if not df_sector.empty and "RUCPagador" in df_sector.columns:
+            sector_cols = ["RUCPagador", "Sector", "GrupoEco"]
+            for col in ["Sector", "GrupoEco"]:
+                if col in df_sector.columns:
+                    sector_cols.append(col)
+
+            df_merged = df_merged.merge(
+                df_sector[sector_cols],
+                on="RUCPagador",
+                how="left",
+            )
+        else:
+            logger.warning(
+                "DataFrame de sector vacío o sin columna RUCPagador, usando valores por defecto"
+            )
+            df_merged["Sector"] = "SIN CLASIFICAR"
+            df_merged["GrupoEco"] = ""
+
+        # === PASO 3: CALCULAR SaldoTotal ===
+        # Replicar: if [TipoPago] = "PAGO PARCIAL" then [SaldoDeuda] else if [TipoPago] = "" then [NetoConfirmado] else [NetoConfirmado] - [MontoPago]
+        df_merged["SaldoTotal"] = np.where(
+            df_merged.get("TipoPago_temp", "") == "PAGO PARCIAL",
+            df_merged.get("SaldoDeuda_temp", 0),
+            np.where(
+                (df_merged.get("TipoPago_temp", "").isna())
+                | (df_merged.get("TipoPago_temp", "") == ""),
+                df_merged["NetoConfirmado"],
+                df_merged["NetoConfirmado"]
+                - df_merged.get("MontoPago_temp", 0).fillna(0),
+            ),
+        )
+
+        # === PASO 4: CALCULAR SaldoTotalPen ===
+        # Replicar: if [Moneda] = "PEN" then [SaldoTotal] else [SaldoTotal]*Tipo_de_Cambio
+        df_merged["SaldoTotalPen"] = np.where(
+            df_merged["Moneda"] == "PEN",
+            df_merged["SaldoTotal"],
+            df_merged["SaldoTotal"] * tipo_cambio,
+        )
+
+        # === PASO 5: CALCULAR TipoPagoReal ===
+        # Replicar lógica compleja de Power BI
+        df_merged["TipoPagoReal"] = np.where(
+            (df_merged.get("TipoPago_temp", "") == "PAGO PARCIAL")
+            | (df_merged.get("TipoPago_temp", "").isna())
+            | (df_merged.get("TipoPago_temp", "") == ""),
+            np.where(
+                df_merged["CodigoLiquidacion"].isin(self.CODIGOS_MORA_MAYO),
+                "MORA A MAYO",
+                df_merged.get("TipoPago_temp", "").fillna(""),
+            ),
+            df_merged.get("TipoPago_temp", ""),
+        )
+
+        # === PASO 6: CALCULAR EstadoCuenta ===
+        # Replicar: if [FechaConfirmado] <= Fecha_Corte then "VENCIDO" else "VIGENTE"
+        df_merged["FechaConfirmado"] = pd.to_datetime(df_merged["FechaConfirmado"])
+        df_merged["EstadoCuenta"] = np.where(
+            df_merged["FechaConfirmado"].dt.date <= self.fecha_corte,
+            "VENCIDO",
+            "VIGENTE",
+        )
+
+        # === PASO 7: CALCULAR EstadoReal ===
+        # Replicar lógica de cobranza especial
+        df_merged["EstadoReal"] = np.where(
+            df_merged["EstadoCuenta"] == "VENCIDO",
+            np.where(
+                df_merged["CodigoLiquidacion"].isin(self.CODIGOS_COBRANZA_ESPECIAL),
+                "COBRANZA ESPECIAL",
+                df_merged["EstadoCuenta"],
+            ),
+            df_merged["EstadoCuenta"],
+        )
+
+        # === PASO 8: LIMPIAR Y FORMATEAR ===
+        # Rellenar valores nulos con valores consistentes con el modelo
+        df_merged["Sector"] = df_merged["Sector"].fillna("SIN CLASIFICAR")
+        df_merged["GrupoEco"] = df_merged["GrupoEco"].fillna("")
+
+        # Asegurar que las columnas calculadas no sean nulas
+        df_merged["SaldoTotal"] = df_merged["SaldoTotal"].fillna(0.0)
+        df_merged["SaldoTotalPen"] = df_merged["SaldoTotalPen"].fillna(0.0)
+        df_merged["TipoPagoReal"] = df_merged["TipoPagoReal"].fillna("")
+        df_merged["EstadoCuenta"] = df_merged["EstadoCuenta"].fillna("VIGENTE")
+        df_merged["EstadoReal"] = df_merged["EstadoReal"].fillna("VIGENTE")
+
+        # === PASO 9: REMOVER COLUMNAS TEMPORALES ===
+        # Eliminar las columnas temporales de pagos ya que no van al modelo final
+        columnas_temp = [col for col in df_merged.columns if col.endswith("_temp")]
+        df_merged = df_merged.drop(columns=columnas_temp)
+
+        logger.info(
+            f"ETL Power BI aplicado exitosamente. Registros procesados: {len(df_merged)}"
+        )
+        logger.debug(f"Columnas finales: {list(df_merged.columns)}")
+
+        return df_merged
 
     def _obtener_tipo_cambio_actual(self) -> float:
         """Obtiene el tipo de cambio más reciente."""
