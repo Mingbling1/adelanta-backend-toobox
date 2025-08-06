@@ -33,8 +33,8 @@ class RepositoryFactory:
             engine_kwargs={
                 "echo": False,  # Sin logging detallado en tasks
                 "future": True,
-                "pool_size": 10,  # Pool más pequeño por worker
-                "max_overflow": 5,  # Overflow reducido
+                "pool_size": 4,  # Pool más pequeño por worker
+                "max_overflow": 2,  # Overflow reducido
                 "pool_recycle": 1800,  # Reciclar conexiones cada 30 min
             },
         )

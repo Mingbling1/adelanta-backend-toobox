@@ -63,10 +63,13 @@ sessionmanager = DatabaseSessionManager(
     {
         "echo": False,  # Sin logging en producción para mejor performance
         "future": True,
-        "pool_size": 20,  # Reducido para 2GB RAM
-        "max_overflow": 10,  # Overflow mínimo
-        "pool_recycle": 1800,  # 30 minutos
-        "connect_args": {"connect_timeout": 10},
+        "pool_size": 8,
+        "max_overflow": 4,
+        "pool_recycle": 1800,
+        "connect_args": {
+            "connect_timeout": 10,
+            "charset": "utf8mb4",  # Charset moderno
+        },
     },
 )
 
