@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 from config.celery_config import celery_app
-from config.repository_factory import repository_factory
+from config.repository_factory import create_repository_factory
 from config.logger import logger
 from cronjobs.BaseCronjob import BaseCronjob
 from utils.adelantafactoring.calculos import KPICalcular
@@ -53,11 +53,14 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
     """
     Lógica principal para actualizar KPI Acumulado
     """
-    # Crear repositories frescos
-    tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
-    kpi_acumulado_repo = await repository_factory.create_kpi_acumulado_repository()
+    # Crear factory fresco para esta task
+    repo_factory = create_repository_factory()
 
     try:
+        # Crear repositories frescos
+        tipo_cambio_repo = await repo_factory.create_tipo_cambio_repository()
+        kpi_acumulado_repo = await repo_factory.create_kpi_acumulado_repository()
+
         # TipoCambio
         tipo_cambio_records = await tipo_cambio_repo.get_all_dicts(exclude_pk=True)
         tipo_cambio_df = pd.DataFrame(tipo_cambio_records)
@@ -81,8 +84,8 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
         return {"records": len(kpi_acumulado_calcular)}
 
     finally:
-        # Limpiar recursos
-        await repository_factory.cleanup()
+        # Limpiar recursos del factory
+        await repo_factory.cleanup()
 
 
 @celery_app.task(
@@ -122,18 +125,21 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
     """
     status_key = "ActualizarTablasReportesCronjob_status"
 
-    # Crear repositories
-    tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
-    kpi_repo = await repository_factory.create_kpi_repository()
-    saldos_repo = await repository_factory.create_saldos_repository()
-    nuevos_clientes_repo = (
-        await repository_factory.create_nuevos_clientes_nuevos_pagadores_repository()
-    )
-    actualizacion_repo = (
-        await repository_factory.create_actualizacion_reportes_repository()
-    )
+    # Crear factory fresco para esta task
+    repo_factory = create_repository_factory()
 
     try:
+        # Crear repositories
+        tipo_cambio_repo = await repo_factory.create_tipo_cambio_repository()
+        kpi_repo = await repo_factory.create_kpi_repository()
+        saldos_repo = await repo_factory.create_saldos_repository()
+        nuevos_clientes_repo = (
+            await repo_factory.create_nuevos_clientes_nuevos_pagadores_repository()
+        )
+        actualizacion_repo = (
+            await repo_factory.create_actualizacion_reportes_repository()
+        )
+
         # TipoCambio
         tipo_cambio_records = await tipo_cambio_repo.get_all_dicts(exclude_pk=True)
         tipo_cambio_df = pd.DataFrame(tipo_cambio_records)
@@ -220,4 +226,5 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         raise e
 
     finally:
-        await repository_factory.cleanup()
+        # Limpiar recursos del factory
+        await repo_factory.cleanup()

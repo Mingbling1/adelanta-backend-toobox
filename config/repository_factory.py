@@ -103,5 +103,9 @@ class RepositoryFactory:
             logger.warning(f"Error cerrando session manager: {e}")
 
 
-# Instancia global para reuso en tasks
-repository_factory = RepositoryFactory()
+def create_repository_factory() -> RepositoryFactory:
+    """
+    Crear una nueva instancia de RepositoryFactory para cada task
+    Esto evita problemas de estado compartido en Celery
+    """
+    return RepositoryFactory()
