@@ -2,7 +2,6 @@ from sqlalchemy import String, Float, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from config.db_mysql import Base
-from uuid import UUID, uuid4
 
 
 class KPIAcumuladoModel(Base):
@@ -54,6 +53,13 @@ class KPIAcumuladoModel(Base):
     FacturasGeneradas: Mapped[str] = mapped_column(String(255), nullable=False)
     Ejecutivo: Mapped[str] = mapped_column(String(255), nullable=False)
     FechaPago: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # ✅ AGREGAR COLUMNAS FALTANTES:
+    FechaPagoCreacion: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    FechaPagoModificacion: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+    TipoOperacionDetalle: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # ✅ FIN COLUMNAS AGREGADAS
     DiasMora: Mapped[int | None] = mapped_column(Integer, nullable=True)
     MontoCobrarPago: Mapped[float | None] = mapped_column(Float, nullable=True)
     MontoPago: Mapped[float] = mapped_column(Float, nullable=False)
@@ -97,6 +103,7 @@ class KPIAcumuladoModel(Base):
     TotalIngresosSoles: Mapped[float] = mapped_column(Float, nullable=False)
     MontoPagoSoles: Mapped[float] = mapped_column(Float, nullable=False)
     Utilidad: Mapped[float] = mapped_column(Float, nullable=False)
+
     def to_dict(self) -> dict:
         data = self.__dict__.copy()
         data.pop("id", None)

@@ -61,11 +61,11 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager(
     str(settings.DATABASE_MYSQL_URL),
     {
-        "echo": False,
+        "echo": False,  # Sin logging en producción para mejor performance
         "future": True,
-        "pool_size": 100,
-        "max_overflow": 20,
-        "pool_recycle": 200,
+        "pool_size": 20,  # Reducido para 2GB RAM
+        "max_overflow": 10,  # Overflow mínimo
+        "pool_recycle": 1800,  # 30 minutos
         "connect_args": {"connect_timeout": 10},
     },
 )

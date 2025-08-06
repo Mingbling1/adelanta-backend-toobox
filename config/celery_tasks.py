@@ -75,7 +75,7 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
 
         # Usar bulk insert optimizado
         await kpi_acumulado_repo.delete_and_bulk_insert_chunked(
-            kpi_acumulado_calcular, chunk_size=2000
+            kpi_acumulado_calcular, chunk_size=5000
         )
 
         return {"records": len(kpi_acumulado_calcular)}
