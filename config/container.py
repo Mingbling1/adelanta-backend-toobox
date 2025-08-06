@@ -34,11 +34,11 @@ class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[
             "cronjobs.datamart.ActualizarTipoCambioCronjob",
-            "cronjobs.datamart.ActualizarTablaKPIAcumuladoCronjob",
             "cronjobs.datamart.ActualizarTablaRetomaCronjob",
             "cronjobs.datamart.ActualizarTablasReportesCronjob",
             "cronjobs.datamart.ActualizarTablasCXCCronjob",
             "cronjobs.datamart.ActualizarCXCETLCronjob",
+            # Background processors NO necesitan wiring, solo tasks con repository_factory
         ]
     )
 

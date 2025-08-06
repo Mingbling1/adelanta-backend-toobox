@@ -12,7 +12,8 @@ celery_app = Celery(
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
     include=[
-        "config.celery_tasks",  # Importar módulo de tareas
+        "background.tasks.toolbox",  # 🆕 Importar tasks del directorio background
+        "config.celery_tasks",  # Mantener importación legacy para compatibilidad
     ],
 )
 

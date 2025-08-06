@@ -16,7 +16,12 @@ from routers.datamart import (
 )  # DATAMART
 from routers.toolbox import DiferidoRouter  # TOOLBOX
 from routers.toolbox import VentasAutodetraccionesRouter  # TOOLBOX
-from routers.toolbox import celery_tasks_router  # CELERY TASKS
+from background.routers.toolbox import (
+    tablas_reportes_router,
+    tablas_cxc_router,
+    kpi_acumulado_router,
+)  # CELERY TASKS TOOLBOX
+from background.routers import base_router  # CELERY TASKS
 from routers.auth import (
     UsuarioRouter,
     AuthRouter,
@@ -116,9 +121,20 @@ app.include_router(
 
 # CELERY TASKS
 app.include_router(
-    celery_tasks_router.router,
-    prefix="/toolbox",
-    tags=["🎮 Celery Tasks"],
+    base_router.router,
+    prefix="/background/toolbox",
+)
+app.include_router(
+    tablas_reportes_router.router,
+    prefix="/background/toolbox/tablas-reportes",
+)
+app.include_router(
+    tablas_cxc_router.router,
+    prefix="/background/toolbox/tablas-cxc",
+)
+app.include_router(
+    kpi_acumulado_router.router,
+    prefix="/background/toolbox/kpi-acumulado",
 )
 # AUTH
 app.include_router(AuthRouter.router, prefix="/auth", tags=["Auth"])
