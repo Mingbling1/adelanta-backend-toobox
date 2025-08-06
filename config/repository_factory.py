@@ -3,7 +3,7 @@
 Crea instancias frescas de repositories sin singletons
 """
 
-from config.db_mysql import DatabaseSessionManager, get_db
+from config.db_mysql import DatabaseSessionManager
 from config.settings import settings
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
 from repositories.datamart.KPIAcumuladoRepository import KPIAcumuladoRepository
@@ -40,8 +40,8 @@ class RepositoryFactory:
         )
 
     async def get_db_session(self):
-        """Obtener sesión de base de datos"""
-        async for session in get_db(self.session_manager):
+        """Obtener sesión de base de datos usando nuestro session manager"""
+        async with self.session_manager.session() as session:
             return session
 
     async def create_tipo_cambio_repository(self) -> TipoCambioRepository:

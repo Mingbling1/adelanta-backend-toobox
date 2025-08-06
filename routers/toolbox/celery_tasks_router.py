@@ -39,12 +39,12 @@ class TaskStatusResponse(BaseModel):
     ready: bool
     successful: Optional[bool] = None
     failed: Optional[bool] = None
+    error: Optional[str] = None  # Agregar campo para errores
 
 
 # 🎮 Router de control remoto
 router = APIRouter(
     prefix="/tasks",
-    tags=["🎮 Celery Tasks Control"],
     responses={404: {"description": "Task not found"}},
 )
 
@@ -103,13 +103,34 @@ async def get_task_status(task_id: str):
 
         logger.info(f"📊 API: Estado de task {task_id}: {status_info['status']}")
 
-        return TaskStatusResponse(**status_info)
+        # Asegurar que todos los campos opcionales estén presentes
+        response_data = {
+            "task_id": status_info.get("task_id", task_id),
+            "status": status_info.get("status", "UNKNOWN"),
+            "result": status_info.get("result"),
+            "ready": status_info.get("ready", False),
+            "successful": status_info.get("successful"),
+            "failed": status_info.get("failed"),
+            "error": status_info.get("error"),
+        }
+
+        return TaskStatusResponse(**response_data)
 
     except Exception as e:
         logger.error(f"❌ API: Error consultando estado: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error consultando estado: {str(e)}"
-        )
+
+        # Devolver respuesta estructurada en caso de error
+        error_response = {
+            "task_id": task_id,
+            "status": "API_ERROR",
+            "result": None,
+            "ready": False,
+            "successful": None,
+            "failed": None,
+            "error": str(e),
+        }
+
+        return TaskStatusResponse(**error_response)
 
 
 @router.get(
