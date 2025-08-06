@@ -17,6 +17,9 @@ from repositories.datamart.CXCAcumuladoDIMRepository import CXCAcumuladoDIMRepos
 from repositories.datamart.CXCPagosFactRepository import CXCPagosFactRepository
 from repositories.datamart.CXCDevFactRepository import CXCDevFactRepository
 
+# 🔄 REUTILIZAR el session manager existente en lugar de crear uno nuevo
+from config.db_mysql import sessionmanager
+
 
 class RepositoryFactory:
     """
@@ -25,8 +28,6 @@ class RepositoryFactory:
     """
 
     def __init__(self):
-        # 🔄 REUTILIZAR el session manager existente en lugar de crear uno nuevo
-        from config.db_mysql import sessionmanager
 
         self.session_manager = sessionmanager
 
