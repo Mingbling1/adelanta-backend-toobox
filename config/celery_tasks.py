@@ -21,7 +21,7 @@ from config.redis import redis_client_manager
     bind=True,
     name="actualizar_kpi_acumulado_task",
     queue="cronjobs",
-    max_retries=3,
+    max_retries=1,
     default_retry_delay=60,
 )
 def actualizar_kpi_acumulado_task(self) -> Dict[str, Any]:
@@ -75,7 +75,7 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
 
         # Usar bulk insert optimizado
         await kpi_acumulado_repo.delete_and_bulk_insert_chunked(
-            kpi_acumulado_calcular, chunk_size=1000
+            kpi_acumulado_calcular, chunk_size=2000
         )
 
         return {"records": len(kpi_acumulado_calcular)}
@@ -89,7 +89,7 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
     bind=True,
     name="actualizar_tablas_reportes_task",
     queue="cronjobs",
-    max_retries=3,
+    max_retries=1,
     default_retry_delay=60,
 )
 def actualizar_tablas_reportes_task(self) -> Dict[str, Any]:
