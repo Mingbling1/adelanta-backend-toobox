@@ -386,6 +386,7 @@ class BaseProcessor:
 
             # Obtener configuración del beat_schedule desde celery_app
             beat_schedule = celery_app.conf.beat_schedule or {}
+            print(celery_app.conf.get("beat_schedule", {}))
 
             if not beat_schedule:
                 logger.warning(
