@@ -212,4 +212,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-adelanta-toolbox = { git = "https://github.com/Mingbling1/toolbox.git", rev = "6407af38db4be8c1021eebb54c6a15a90a6fa408" }
+adelanta-toolbox = { git = "https://github.com/Mingbling1/toolbox.git" }
