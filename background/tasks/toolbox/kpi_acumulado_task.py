@@ -13,7 +13,7 @@ from config.celery_config import celery_app
 from config.repository_factory import create_repository_factory
 from config.logger import logger
 from cronjobs.BaseCronjob import BaseCronjob
-from utils.adelantafactoring.calculos import KPICalcular
+from toolbox.api.kpi_api import get_kpi
 
 
 @celery_app.task(
@@ -97,11 +97,13 @@ async def _actualizar_kpi_acumulado_logic() -> Dict[str, Any]:
         logger.info("🧮 Calculando KPI Acumulado...")
 
         # KPI Acumulado
-        kpi_acumulado_calcular = await KPICalcular(tipo_cambio_df).calcular(
+        kpi_acumulado_calcular = await get_kpi(
+            tipo_cambio_df=tipo_cambio_df,
             start_date=BaseCronjob.obtener_datetime_fecha_inicio(),
             end_date=BaseCronjob.obtener_datetime_fecha_fin(),
             fecha_corte=BaseCronjob.obtener_datetime_fecha_fin(),
             tipo_reporte=0,
+            as_df=False,
         )
 
         logger.info(f"💾 Insertando {len(kpi_acumulado_calcular)} registros...")
