@@ -10,6 +10,7 @@ from services.BaseService import BaseService
 from xlsxwriter import Workbook
 
 
+
 class KPIService(BaseService[KPIModel]):
     def __init__(self, kpi_repository: KPIRepository = Depends()):
         self.kpi_repository = kpi_repository
@@ -134,23 +135,36 @@ class KPIService(BaseService[KPIModel]):
 
         df = await asyncio.to_thread(_build_df)
 
-        def _write_buffer() -> BytesIO:
-            buf = BytesIO()
-            if tipo.lower() == "csv":
-                csv_content = df.write_csv()
-                buf.write(csv_content.encode("utf-8"))
-            else:
-                # xlsxwriter puede trabajar directamente con BytesIO
-                with Workbook(buf, {"in_memory": True}) as workbook:
-                    df.write_excel(
-                        workbook=workbook,
-                        worksheet="KPI",
-                        autofit=True,  # Ajustar ancho automáticamente
-                        include_header=True,
-                        autofilter=True,  # Agregar filtros automáticos
-                    )
-            buf.seek(0)
-            return buf
+        if tipo.lower() == "csv":
+            csv_buffer = BytesIO()
+            csv_content = df.write_csv()
+            csv_buffer.write(csv_content.encode("utf-8"))
+            csv_buffer.seek(0)
+            return csv_buffer
+        else:
+            excel_buffer = BytesIO()
+            await asyncio.to_thread(
+                self._escribir_excel, df, excel_buffer
+            )
+            excel_buffer.seek(0)
+            return excel_buffer
 
-        buffer = await asyncio.to_thread(_write_buffer)
-        return buffer
+    def _escribir_excel(
+        self,
+        df: pl.DataFrame,
+        buffer: BytesIO,
+    ):
+        """
+        MÉTODO COMPLETAMENTE POLARS: Sin pandas, usando xlsxwriter nativo
+        Polars puro con Excel
+        """
+        # xlsxwriter puede trabajar directamente con BytesIO
+        with Workbook(buffer, {"in_memory": True}) as workbook:
+            # Escribir hoja: KPI
+            df.write_excel(
+                workbook=workbook,
+                worksheet="KPI",
+                autofit=True,  # Ajustar ancho automáticamente
+                include_header=True,
+                autofilter=True,  # Agregar filtros automáticos
+            )
