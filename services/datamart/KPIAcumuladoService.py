@@ -39,7 +39,7 @@ class KPIAcumuladoService(BaseService[KPIAcumuladoModel]):
     ) -> BytesIO:
         data_dicts = await self.kpi_acumulado_repository.get_all_dicts(exclude_pk=True)
 
-        def _build_df():
+        def _build_df() -> pl.DataFrame:
             if not data_dicts:
                 return pl.DataFrame()
 

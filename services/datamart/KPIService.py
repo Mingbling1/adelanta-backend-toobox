@@ -7,8 +7,7 @@ from utils.decorators import create_job
 from io import BytesIO
 import asyncio
 from services.BaseService import BaseService
-from xlsxwriter import Workbook
-
+from config.logger import logger 
 
 
 class KPIService(BaseService[KPIModel]):
@@ -37,15 +36,22 @@ class KPIService(BaseService[KPIModel]):
         tipo: Literal["excel", "csv"] = "excel",
         informe: str | None = None,
     ) -> BytesIO:
+        logger.warning(f"KPI get_all_to_file iniciado - tipo: {tipo}, informe: {informe}")
+        
         data_dicts = await self.kpi_repository.get_all_dicts(exclude_pk=True)
+        logger.warning(f"KPI datos obtenidos - registros: {len(data_dicts) if data_dicts else 0}")
 
         def _build_df():
             if not data_dicts:
+                logger.warning("KPI sin datos - retornando DataFrame vacío")
                 return pl.DataFrame()
 
+            logger.warning(f"KPI creando DataFrame con {len(data_dicts)} registros")
             df = pl.DataFrame(data_dicts, infer_schema_length=None)
+            logger.warning(f"KPI DataFrame creado - columnas: {df.columns}, shape: {df.shape}")
 
             if informe:
+                logger.warning(f"KPI aplicando filtro informe: {informe}")
                 columnas_esperadas = [
                     "CodigoLiquidacion",
                     "CodigoSolicitud",
@@ -131,40 +137,42 @@ class KPIService(BaseService[KPIModel]):
                     if col not in df.columns:
                         df = df.with_columns(pl.lit(None).alias(col))
                 df = df.select(columnas_esperadas)
+                logger.warning(f"KPI DataFrame filtrado - nueva shape: {df.shape}")
             return df
 
+        logger.warning("KPI iniciando construcción de DataFrame en thread")
         df = await asyncio.to_thread(_build_df)
+        logger.warning(f"KPI DataFrame final - shape: {df.shape}, tipo: {type(df)}")
 
-        if tipo.lower() == "csv":
-            csv_buffer = BytesIO()
-            csv_content = df.write_csv()
-            csv_buffer.write(csv_content.encode("utf-8"))
-            csv_buffer.seek(0)
-            return csv_buffer
-        else:
-            excel_buffer = BytesIO()
-            await asyncio.to_thread(
-                self._escribir_excel, df, excel_buffer
-            )
-            excel_buffer.seek(0)
-            return excel_buffer
+        def _write_buffer() -> BytesIO:
+            logger.warning(f"KPI iniciando escritura - formato: {tipo}")
+            buf = BytesIO()
+            
+            try:
+                if tipo.lower() == "csv":
+                    logger.warning("KPI escribiendo CSV")
+                    csv_content = df.write_csv()
+                    buf.write(csv_content.encode("utf-8"))
+                    logger.warning(f"KPI CSV escrito - tamaño buffer: {buf.tell()} bytes")
+                else:
+                    logger.warning("KPI escribiendo Excel con df.write_excel")
+                    df.write_excel(
+                        workbook=buf,
+                        autofit=True,
+                        include_header=True,
+                        autofilter=True,
+                    )
+                    logger.warning(f"KPI Excel escrito - tamaño buffer: {buf.tell()} bytes")
+                
+                buf.seek(0)
+                logger.warning("KPI buffer posicionado al inicio")
+                return buf
+                
+            except Exception as e:
+                logger.warning(f"KPI ERROR en _write_buffer: {str(e)} - Tipo: {type(e)}")
+                raise
 
-    def _escribir_excel(
-        self,
-        df: pl.DataFrame,
-        buffer: BytesIO,
-    ):
-        """
-        MÉTODO COMPLETAMENTE POLARS: Sin pandas, usando xlsxwriter nativo
-        Polars puro con Excel
-        """
-        # xlsxwriter puede trabajar directamente con BytesIO
-        with Workbook(buffer, {"in_memory": True}) as workbook:
-            # Escribir hoja: KPI
-            df.write_excel(
-                workbook=workbook,
-                worksheet="KPI",
-                autofit=True,  # Ajustar ancho automáticamente
-                include_header=True,
-                autofilter=True,  # Agregar filtros automáticos
-            )
+        logger.warning("KPI iniciando escritura en thread")
+        buffer = await asyncio.to_thread(_write_buffer)
+        logger.warning(f"KPI proceso completado - buffer final tamaño: {buffer.tell()} bytes")
+        return buffer
