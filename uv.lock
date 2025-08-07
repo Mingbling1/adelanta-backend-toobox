@@ -51,7 +51,7 @@ wheels = [
 [[package]]
 name = "adelanta-toolbox"
 version = "0.5.0"
-source = { git = "https://github.com/Mingbling1/toolbox.git#d26d6ca442a7fd2cb4e03bd522b2979ff364cf7b" }
+source = { git = "https://github.com/Mingbling1/toolbox.git#67305955b0d9118b9f431dc7b82a71c00c817f07" }
 dependencies = [
     { name = "aiohttp" },
     { name = "numpy" },

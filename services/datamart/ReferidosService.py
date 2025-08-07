@@ -13,7 +13,7 @@ import calendar
 from datetime import datetime
 from models.datamart.TipoCambioModel import TipoCambioModel
 from utils.decorators import create_job
-from toolbox.api.comisiones_api import ComisionesAPI
+from toolbox.api.comisiones_api import get_comisiones_async
 
 
 class ReferidosService:
@@ -95,12 +95,11 @@ class ReferidosService:
         # preservamos el orden de columnas según el primer dict
         cols = list(rows[0].keys()) if rows else []
         kpi_df = pd.DataFrame(rows, columns=cols)
-        comisiones = ComisionesAPI(
-            kpi_df=kpi_df,
-        )
+
         start_date, end_date = format_date_range(primer_dia, ultimo_dia)
-        zip_bytes = comisiones.calcular_comisiones(
-            start_date=start_date, end_date=end_date
+
+        zip_bytes = await get_comisiones_async(
+            kpi_df=kpi_df, start_date=start_date, end_date=end_date
         )
         return zip_bytes
 
