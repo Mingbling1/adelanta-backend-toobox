@@ -509,7 +509,9 @@ class CXCAcumuladoDIMCalcular(BaseCalcular):
         try:
             # 🚀 OPTIMIZACIÓN: List comprehension directo sin for/enumerate
             datos_validados = [
-                CXCAcumuladoDIMCalcularSchema(**registro).model_dump()
+                CXCAcumuladoDIMCalcularSchema(**registro).model_dump(
+                    exclude={"IdLiquidacionPago", "IdLiquidacionDevolucion"}
+                )
                 for registro in data
             ]
 
