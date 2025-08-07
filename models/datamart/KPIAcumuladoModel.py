@@ -102,6 +102,8 @@ class KPIAcumuladoModel(Base):
     CostosFondoSoles: Mapped[float] = mapped_column(Float, nullable=False)
     TotalIngresosSoles: Mapped[float] = mapped_column(Float, nullable=False)
     MontoPagoSoles: Mapped[float] = mapped_column(Float, nullable=False)
+    MontoNegociado: Mapped[float] = mapped_column(Float, nullable=False)
+    MontoNegociadoSoles: Mapped[float] = mapped_column(Float, nullable=False)
     Utilidad: Mapped[float] = mapped_column(Float, nullable=False)
 
     def to_dict(self) -> dict:
