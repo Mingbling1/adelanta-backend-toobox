@@ -78,12 +78,12 @@ services:
             - ./.env
         command: uv run celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=1 --pool=solo --max-tasks-per-child=1
         restart: unless-stopped
-    deploy:
-        resources:
-            limits:
-                memory: 950M # Reducido de 950M
-            reservations:
-                memory: 400M # Mantenido
+        deploy:
+            resources:
+                limits:
+                    memory: 950M # Aumentado de 800M a 950M (+150MB)
+                reservations:
+                    memory: 500M # Aumentado de 400M a 500M (+100MB)
         volumes:
             - ./templates:/app/templates
         environment:
