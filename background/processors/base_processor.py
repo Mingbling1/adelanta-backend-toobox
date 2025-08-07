@@ -8,6 +8,8 @@ from typing import Dict, Any
 from config.logger import logger
 from background.schemas.task_schema import TaskStatusResponse
 from config.celery_config import celery_app
+from datetime import datetime, timedelta, time
+import pytz
 
 
 class BaseProcessor:
@@ -385,8 +387,7 @@ class BaseProcessor:
             logger.info("🕐 Obteniendo información del beat_schedule...")
 
             # Obtener configuración del beat_schedule desde celery_app
-            beat_schedule = celery_app.conf.beat_schedule or {}
-            logger.critical(celery_app.conf.get("beat_schedule", {}))
+            beat_schedule = celery_app.conf.get("beat_schedule", {})
 
             if not beat_schedule:
                 logger.warning(
@@ -459,8 +460,6 @@ class BaseProcessor:
                                 minute_val, int
                             ):
                                 try:
-                                    from datetime import datetime, timedelta, time
-                                    import pytz
 
                                     # Timezone Lima
                                     lima_tz = pytz.timezone("America/Lima")
