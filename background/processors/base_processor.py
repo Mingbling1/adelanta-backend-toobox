@@ -386,7 +386,7 @@ class BaseProcessor:
 
             # Obtener configuración del beat_schedule desde celery_app
             beat_schedule = celery_app.conf.beat_schedule or {}
-            print(celery_app.conf.get("beat_schedule", {}))
+            logger.critical(celery_app.conf.get("beat_schedule", {}))
 
             if not beat_schedule:
                 logger.warning(
@@ -416,48 +416,89 @@ class BaseProcessor:
 
                     if schedule_obj:
                         try:
-                            # Si es un objeto crontab, extraer información legible
+                            # Si es un objeto crontab, extraer información legible de forma segura
                             if hasattr(schedule_obj, "hour") and hasattr(
                                 schedule_obj, "minute"
                             ):
-                                hour = getattr(schedule_obj, "hour", "*")
-                                minute = getattr(schedule_obj, "minute", "*")
-                                day_of_week = getattr(schedule_obj, "day_of_week", "*")
-                                day_of_month = getattr(
-                                    schedule_obj, "day_of_month", "*"
+                                # Extraer valores sin usar format() problemático
+                                hour_val = getattr(schedule_obj, "hour", None)
+                                minute_val = getattr(schedule_obj, "minute", None)
+                                day_of_week_val = getattr(
+                                    schedule_obj, "day_of_week", None
                                 )
-                                month_of_year = getattr(
-                                    schedule_obj, "month_of_year", "*"
+                                day_of_month_val = getattr(
+                                    schedule_obj, "day_of_month", None
+                                )
+                                month_of_year_val = getattr(
+                                    schedule_obj, "month_of_year", None
                                 )
 
-                                # Convertir a formato legible
-                                if hour != "*" and minute != "*":
-                                    schedule_info = (
-                                        f"Todos los días a las {hour:02d}:{minute:02d}"
-                                    )
+                                # Convertir valores de set/frozenset a enteros si es posible
+                                if (
+                                    isinstance(hour_val, (set, frozenset))
+                                    and len(hour_val) == 1
+                                ):
+                                    hour_val = next(iter(hour_val))
+                                if (
+                                    isinstance(minute_val, (set, frozenset))
+                                    and len(minute_val) == 1
+                                ):
+                                    minute_val = next(iter(minute_val))
+
+                                # Formatear de forma segura
+                                if isinstance(hour_val, int) and isinstance(
+                                    minute_val, int
+                                ):
+                                    schedule_info = f"Todos los días a las {hour_val:02d}:{minute_val:02d}"
                                 else:
-                                    schedule_info = f"Cron: {minute} {hour} {day_of_month} {month_of_year} {day_of_week}"
+                                    # Fallback a representación string directa
+                                    schedule_info = f"Cron: {minute_val} {hour_val} {day_of_month_val} {month_of_year_val} {day_of_week_val}"
 
-                            # Intentar calcular próxima ejecución
-                            if hasattr(schedule_obj, "remaining_estimate"):
+                            # Para next_run, vamos a calcularlo manualmente ya que Celery no lo proporciona fácilmente
+                            if isinstance(hour_val, int) and isinstance(
+                                minute_val, int
+                            ):
                                 try:
-                                    from datetime import datetime, timedelta
+                                    from datetime import datetime, timedelta, time
+                                    import pytz
 
-                                    remaining = schedule_obj.remaining_estimate(
-                                        datetime.now()
+                                    # Timezone Lima
+                                    lima_tz = pytz.timezone("America/Lima")
+                                    now_lima = datetime.now(lima_tz)
+
+                                    # Crear próxima ejecución para hoy
+                                    today_execution = now_lima.replace(
+                                        hour=hour_val,
+                                        minute=minute_val,
+                                        second=0,
+                                        microsecond=0,
                                     )
-                                    if isinstance(remaining, timedelta):
-                                        next_run = (
-                                            datetime.now() + remaining
-                                        ).isoformat()
-                                except Exception:
-                                    pass
+
+                                    # Si ya pasó hoy, programar para mañana
+                                    if today_execution <= now_lima:
+                                        next_execution = today_execution + timedelta(
+                                            days=1
+                                        )
+                                    else:
+                                        next_execution = today_execution
+
+                                    next_run = next_execution.isoformat()
+
+                                except Exception as next_run_error:
+                                    logger.debug(
+                                        f"No se pudo calcular next_run para {schedule_name}: {next_run_error}"
+                                    )
+                                    next_run = None
+                            else:
+                                next_run = None
 
                         except Exception as schedule_parse_error:
                             logger.warning(
                                 f"⚠️ Error parseando schedule para {schedule_name}: {schedule_parse_error}"
                             )
-                            schedule_info = str(schedule_obj)
+                            # Fallback seguro sin usar format()
+                            schedule_info = repr(schedule_obj)
+                            next_run = None
 
                     # Determinar descripción de la task
                     task_description = "Tarea programada automáticamente"
