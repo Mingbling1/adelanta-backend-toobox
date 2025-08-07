@@ -35,7 +35,6 @@ class Container(containers.DeclarativeContainer):
         modules=[
             "cronjobs.datamart.ActualizarTipoCambioCronjob",
             "cronjobs.datamart.ActualizarTablaRetomaCronjob",
-            "cronjobs.datamart.ActualizarTablasReportesCronjob",
             "cronjobs.datamart.ActualizarTablasCXCCronjob",
             "cronjobs.datamart.ActualizarCXCETLCronjob",
             # Background processors NO necesitan wiring, solo tasks con repository_factory
