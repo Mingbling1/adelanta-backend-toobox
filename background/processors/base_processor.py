@@ -374,3 +374,151 @@ class BaseProcessor:
             "fallback": True,
             "note": "Lista manual usada como fallback - verificar configuración de Celery",
         }
+
+    @staticmethod
+    def get_scheduled_tasks() -> Dict[str, Any]:
+        """
+        🕐 Obtener información detallada del beat_schedule configurado en Celery
+        Para mostrar en frontend las tareas programadas automáticamente
+        """
+        try:
+            logger.info("🕐 Obteniendo información del beat_schedule...")
+
+            # Obtener configuración del beat_schedule desde celery_app
+            beat_schedule = celery_app.conf.beat_schedule or {}
+
+            if not beat_schedule:
+                logger.warning(
+                    "⚠️ No se encontraron tareas programadas en beat_schedule"
+                )
+                return {
+                    "success": True,
+                    "scheduled_tasks": {},
+                    "total_scheduled": 0,
+                    "message": "No hay tareas programadas automáticamente",
+                }
+
+            scheduled_tasks = {}
+
+            logger.info(f"📊 Procesando {len(beat_schedule)} tareas programadas...")
+
+            for schedule_name, schedule_config in beat_schedule.items():
+                try:
+                    # Extraer información básica de la configuración
+                    task_name = schedule_config.get("task", "Unknown")
+                    schedule_obj = schedule_config.get("schedule")
+                    options = schedule_config.get("options", {})
+
+                    # Formatear información del schedule
+                    schedule_info = "Configuración no disponible"
+                    next_run = None
+
+                    if schedule_obj:
+                        try:
+                            # Si es un objeto crontab, extraer información legible
+                            if hasattr(schedule_obj, "hour") and hasattr(
+                                schedule_obj, "minute"
+                            ):
+                                hour = getattr(schedule_obj, "hour", "*")
+                                minute = getattr(schedule_obj, "minute", "*")
+                                day_of_week = getattr(schedule_obj, "day_of_week", "*")
+                                day_of_month = getattr(
+                                    schedule_obj, "day_of_month", "*"
+                                )
+                                month_of_year = getattr(
+                                    schedule_obj, "month_of_year", "*"
+                                )
+
+                                # Convertir a formato legible
+                                if hour != "*" and minute != "*":
+                                    schedule_info = (
+                                        f"Todos los días a las {hour:02d}:{minute:02d}"
+                                    )
+                                else:
+                                    schedule_info = f"Cron: {minute} {hour} {day_of_month} {month_of_year} {day_of_week}"
+
+                            # Intentar calcular próxima ejecución
+                            if hasattr(schedule_obj, "remaining_estimate"):
+                                try:
+                                    from datetime import datetime, timedelta
+
+                                    remaining = schedule_obj.remaining_estimate(
+                                        datetime.now()
+                                    )
+                                    if isinstance(remaining, timedelta):
+                                        next_run = (
+                                            datetime.now() + remaining
+                                        ).isoformat()
+                                except Exception:
+                                    pass
+
+                        except Exception as schedule_parse_error:
+                            logger.warning(
+                                f"⚠️ Error parseando schedule para {schedule_name}: {schedule_parse_error}"
+                            )
+                            schedule_info = str(schedule_obj)
+
+                    # Determinar descripción de la task
+                    task_description = "Tarea programada automáticamente"
+                    if task_name == "toolbox.tablas_reportes":
+                        task_description = "Actualización automática de Tablas Reportes (KPI, NuevosClientes, Saldos)"
+                    elif task_name == "toolbox.kpi_acumulado":
+                        task_description = "Actualización automática de KPI Acumulado"
+                    elif task_name == "toolbox.tablas_cxc":
+                        task_description = "Actualización automática de Tablas CXC"
+
+                    scheduled_tasks[schedule_name] = {
+                        "schedule_name": schedule_name,
+                        "task_name": task_name,
+                        "description": task_description,
+                        "schedule_info": schedule_info,
+                        "next_run": next_run,
+                        "queue": options.get("queue", "default"),
+                        "enabled": True,  # Por defecto habilitado si está en configuración
+                        "options": options,
+                    }
+
+                    logger.info(
+                        f"  ✅ Procesada: {schedule_name} -> {task_name} ({schedule_info})"
+                    )
+
+                except Exception as task_error:
+                    logger.error(
+                        f"❌ Error procesando tarea programada {schedule_name}: {task_error}"
+                    )
+                    # Agregar información básica aun con error
+                    scheduled_tasks[schedule_name] = {
+                        "schedule_name": schedule_name,
+                        "task_name": schedule_config.get("task", "Unknown"),
+                        "description": "Error obteniendo información",
+                        "schedule_info": "Error en configuración",
+                        "next_run": None,
+                        "queue": "unknown",
+                        "enabled": False,
+                        "error": str(task_error),
+                    }
+
+            logger.info(
+                f"✅ Procesadas {len(scheduled_tasks)} tareas programadas exitosamente"
+            )
+
+            return {
+                "success": True,
+                "scheduled_tasks": scheduled_tasks,
+                "total_scheduled": len(scheduled_tasks),
+                "timezone": (
+                    str(celery_app.conf.timezone) if celery_app.conf.timezone else "UTC"
+                ),
+                "beat_scheduler": celery_app.conf.beat_scheduler,
+                "message": f"Se encontraron {len(scheduled_tasks)} tareas programadas automáticamente",
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo beat_schedule: {str(e)}")
+            return {
+                "success": False,
+                "scheduled_tasks": {},
+                "total_scheduled": 0,
+                "error": str(e),
+                "message": "Error obteniendo información de tareas programadas",
+            }
