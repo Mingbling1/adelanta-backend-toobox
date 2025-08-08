@@ -121,7 +121,13 @@ async def _execute_tipo_cambio_update(
                         for record in final_results
                     ]
                 )
-                logger.info(f"💾 Guardados {len(created_records)} registros en BD")
+                # 🔧 Verificar si create_many retorna None o lista
+                records_count = (
+                    len(created_records)
+                    if created_records is not None
+                    else len(final_results)
+                )
+                logger.info(f"💾 Guardados {records_count} registros en BD")
             except Exception as e:
                 logger.error(f"❌ Error guardando en BD: {str(e)}")
                 raise
