@@ -7,7 +7,6 @@
 from background.processors.base_processor import BaseProcessor
 from background.tasks.toolbox.tipo_cambio_task import tipo_cambio_task
 from config.logger import logger
-from typing import Optional
 
 
 class TipoCambioProcessor(BaseProcessor):
@@ -24,18 +23,11 @@ class TipoCambioProcessor(BaseProcessor):
             description="Actualización automática de tipos de cambio desde API SUNAT",
         )
 
-    async def run(
-        self,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        batch_size: int = 1,
-    ) -> dict:
+    async def run(self, batch_size: int = 1) -> dict:
         """
         🚀 Ejecutar task de actualización Tipo de Cambio
 
         Args:
-            start_date: Fecha inicio formato "YYYY-MM-DD" (opcional)
-            end_date: Fecha fin formato "YYYY-MM-DD" (opcional)
             batch_size: Tamaño del lote para procesamiento (1-10)
 
         Returns:
@@ -43,13 +35,11 @@ class TipoCambioProcessor(BaseProcessor):
         """
         try:
             logger.info(
-                f"🔄 TipoCambioProcessor ejecutando task con parámetros: start_date={start_date}, end_date={end_date}, batch_size={batch_size}"
+                f"🔄 TipoCambioProcessor ejecutando task con parámetros: batch_size={batch_size}"
             )
 
             # 🎯 Ejecutar Celery task
-            task_result = tipo_cambio_task.delay(
-                start_date=start_date, end_date=end_date, batch_size=batch_size
-            )
+            task_result = tipo_cambio_task.delay(batch_size=batch_size)
 
             # 📊 Formatear respuesta usando BaseProcessor
             response = self.format_task_response(task_result.id)
@@ -59,11 +49,7 @@ class TipoCambioProcessor(BaseProcessor):
                 {
                     "task_name": self.task_name,
                     "description": self.description,
-                    "parameters": {
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "batch_size": batch_size,
-                    },
+                    "parameters": {"batch_size": batch_size},
                 }
             )
 

@@ -15,18 +15,14 @@ from fastapi import HTTPException
 import httpx
 import asyncio
 from typing import List, Set
-
+from cronjobs.BaseCronjob import BaseCronjob
 
 @celery_app.task(name="toolbox.tipo_cambio", bind=True, max_retries=0)
-def tipo_cambio_task(
-    self, start_date: str = None, end_date: str = None, batch_size: int = 1
-):
+def tipo_cambio_task(self, batch_size: int = 1):
     """
     🎯 Actualizar Tipo de Cambio SUNAT usando Celery
 
     Args:
-        start_date: Fecha inicio formato "YYYY-MM-DD" (opcional)
-        end_date: Fecha fin formato "YYYY-MM-DD" (opcional)
         batch_size: Tamaño del lote para procesamiento (default: 1)
 
     Returns:
@@ -46,8 +42,6 @@ def tipo_cambio_task(
         result = asyncio.run(
             _execute_tipo_cambio_update(
                 repository_factory=repository_factory,
-                start_date=start_date,
-                end_date=end_date,
                 batch_size=batch_size,
                 task_id=self.request.id,
             )
@@ -64,8 +58,6 @@ def tipo_cambio_task(
 
 async def _execute_tipo_cambio_update(
     repository_factory,
-    start_date: str = None,
-    end_date: str = None,
     batch_size: int = 1,
     task_id: str = None,
 ) -> dict:
@@ -73,14 +65,10 @@ async def _execute_tipo_cambio_update(
     🔄 Lógica principal de actualización de tipo de cambio
     """
 
-    # 📅 Configurar fechas
-    if start_date and end_date:
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-    else:
-        # 📅 Usar fechas por defecto (último mes)
-        end_dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        start_dt = end_dt - timedelta(days=30)
+
+    # 📅 Configurar fechas usando BaseCronjob
+    start_dt = BaseCronjob.obtener_datetime_fecha_inicio()
+    end_dt = BaseCronjob.obtener_datetime_fecha_fin()
 
     logger.info(
         f"📅 Rango de fechas: {start_dt.strftime('%Y-%m-%d')} → {end_dt.strftime('%Y-%m-%d')}"

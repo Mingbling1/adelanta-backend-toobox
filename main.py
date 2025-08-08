@@ -142,10 +142,7 @@ app.include_router(
     prefix="/background/toolbox/tipo-cambio",
     tags=["Background Tasks - Tipo de Cambio"],
 )
-app.include_router(
-    tipo_cambio_router.router,
-    prefix="/background/toolbox/tipo-cambio",
-)
+
 # AUTH
 app.include_router(AuthRouter.router, prefix="/auth", tags=["Auth"])
 app.include_router(UsuarioRouter.router, prefix="/auth" + "/usuario", tags=["Usuario"])
