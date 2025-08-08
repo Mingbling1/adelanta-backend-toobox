@@ -11,16 +11,15 @@ from config.logger import logger
 
 class TipoCambioProcessor(BaseProcessor):
     """
-    🔄 Processor para actualización de Tipo de Cambio SUNAT
-
-    Hereda de BaseProcessor para formateo centralizado y status management.
-    Es un wrapper opcional que facilita la ejecución del task Celery.
+    🔄 Wrapper de compatibilidad para migrar a Celery
+    Mantiene la misma interfaz que el cronjob original
+    ✅ HEREDA: get_task_status() de BaseProcessor (elimina duplicación)
     """
 
     def __init__(self):
-        super().__init__(
-            task_name="toolbox.tipo_cambio",
-            description="Actualización automática de tipos de cambio desde API SUNAT",
+        super().__init__()  # Llamar al constructor de BaseProcessor
+        self.description = (
+            "Actualización automática de tipos de cambio desde API SUNAT usando Celery"
         )
 
     async def run(self, batch_size: int = 1) -> dict:
@@ -35,28 +34,38 @@ class TipoCambioProcessor(BaseProcessor):
         """
         try:
             logger.info(
-                f"🔄 TipoCambioProcessor ejecutando task con parámetros: batch_size={batch_size}"
+                f"🔄 Enviando Tipo de Cambio task a Celery con parámetros: batch_size={batch_size}"
             )
 
             # 🎯 Ejecutar Celery task
             task_result = tipo_cambio_task.delay(batch_size=batch_size)
 
-            # 📊 Formatear respuesta usando BaseProcessor
-            response = self.format_task_response(task_result.id)
+            logger.info(f"✅ Task enviado a Celery con ID: {task_result.id}")
 
-            # 🔧 Agregar información adicional específica
-            response.update(
-                {
-                    "task_name": self.task_name,
-                    "description": self.description,
-                    "parameters": {"batch_size": batch_size},
-                }
-            )
-
-            logger.info(f"✅ Task iniciado exitosamente: {task_result.id}")
-            return response
+            return {
+                "status": "enqueued",
+                "task_id": task_result.id,
+                "message": "Task Tipo de Cambio SUNAT enviado a Celery exitosamente",
+                "parameters": {"batch_size": batch_size},
+            }
 
         except Exception as e:
-            error_msg = f"❌ Error en TipoCambioProcessor: {str(e)}"
-            logger.error(error_msg)
-            return {"success": False, "message": error_msg, "task_name": self.task_name}
+            logger.error(f"❌ Error enviando task a Celery: {str(e)}")
+            raise e
+
+    def run_sync(self, batch_size: int = 1) -> dict:
+        """
+        Ejecutar de forma síncrona (para testing o casos especiales)
+        """
+        try:
+            logger.info("🔄 Ejecutando Tipo de Cambio task síncronamente...")
+
+            # Ejecutar task directamente (sin Celery)
+            result = tipo_cambio_task(batch_size=batch_size)
+
+            logger.info("✅ Task ejecutado síncronamente")
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Error ejecutando task síncronamente: {str(e)}")
+            raise e

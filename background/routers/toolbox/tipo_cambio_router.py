@@ -55,3 +55,5 @@ async def execute_tipo_cambio_task(
     except Exception as e:
         logger.error(f"❌ API: Error ejecutando Tipo de Cambio: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error ejecutando task: {str(e)}")
+
+

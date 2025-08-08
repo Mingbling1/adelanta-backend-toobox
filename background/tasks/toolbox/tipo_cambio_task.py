@@ -37,11 +37,7 @@ def tipo_cambio_task(self, batch_size: int = 1):
         )
 
         # 🎯 Business Logic: Ejecutar actualización
-        result = asyncio.run(
-            _execute_tipo_cambio_update(
-                batch_size=batch_size,
-            )
-        )
+        result = asyncio.run(_execute_tipo_cambio_update(batch_size=batch_size))
 
         logger.info(f"✅ Task completada exitosamente: {result}")
         return result
@@ -75,10 +71,8 @@ async def _execute_tipo_cambio_update(
         tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
 
         # 📊 Obtener tipos de cambio existentes
-        existing_records = await tipo_cambio_repo.get_all()
-        existing_dates = {
-            record.TipoCambioFecha.strftime("%Y-%m-%d") for record in existing_records
-        }
+        existing_records = await tipo_cambio_repo.get_all(limit=10000)
+        existing_dates = {record.TipoCambioFecha for record in existing_records}
 
         # 📅 Generar todas las fechas del rango
         all_dates = {
