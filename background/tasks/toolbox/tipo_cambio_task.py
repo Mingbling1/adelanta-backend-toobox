@@ -7,7 +7,6 @@
 from config.celery_config import celery_app
 from config.repository_factory import create_repository_factory
 from config.logger import logger
-from repositories.datamart.TipoCambioRepository import TipoCambioRepository
 from schemas.datamart.TipoCambioSchema import TipoCambioPostRequestSchema
 from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -16,6 +15,7 @@ import httpx
 import asyncio
 from typing import List, Set
 from cronjobs.BaseCronjob import BaseCronjob
+
 
 @celery_app.task(name="toolbox.tipo_cambio", bind=True, max_retries=0)
 def tipo_cambio_task(self, batch_size: int = 1):
@@ -65,7 +65,6 @@ async def _execute_tipo_cambio_update(
     🔄 Lógica principal de actualización de tipo de cambio
     """
 
-
     # 📅 Configurar fechas usando BaseCronjob
     start_dt = BaseCronjob.obtener_datetime_fecha_inicio()
     end_dt = BaseCronjob.obtener_datetime_fecha_fin()
@@ -74,9 +73,11 @@ async def _execute_tipo_cambio_update(
         f"📅 Rango de fechas: {start_dt.strftime('%Y-%m-%d')} → {end_dt.strftime('%Y-%m-%d')}"
     )
 
-    # 🔧 Obtener repositorio con sesión aislada
-    with repository_factory.create_datamart_session() as session:
-        tipo_cambio_repo = TipoCambioRepository(session)
+    try:
+        logger.info("🔄 Creando repositories...")
+
+        # 🔧 Crear repository usando repository factory (patrón correcto)
+        tipo_cambio_repo = await repository_factory.create_tipo_cambio_repository()
 
         # 📊 Obtener tipos de cambio existentes
         existing_records = await tipo_cambio_repo.get_all()
@@ -147,6 +148,16 @@ async def _execute_tipo_cambio_update(
             "task_id": task_id,
             "date_range": f"{start_dt.strftime('%Y-%m-%d')} → {end_dt.strftime('%Y-%m-%d')}",
         }
+
+    except Exception as e:
+        logger.error(f"❌ Error en _execute_tipo_cambio_update: {str(e)}")
+        raise
+    finally:
+        # 🧹 Cleanup del repository factory
+        try:
+            await repository_factory.cleanup()
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Error en cleanup: {cleanup_error}")
 
 
 async def _process_batch(
