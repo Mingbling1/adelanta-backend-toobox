@@ -7,12 +7,12 @@ services:
         ports:
             - "8000:8000"
         restart: unless-stopped
-        deploy:
-            resources:
-                limits:
-                    memory: 1000M # Aumentado de 600M a 650M (+50MB)
-                reservations:
-                    memory: 450M # Aumentado de 300M a 350M (+50MB)
+        # deploy:
+        #     resources:
+        #         limits:
+        #             memory: 1000M # Aumentado de 600M a 650M (+50MB)
+        #         reservations:
+        #             memory: 450M # Aumentado de 300M a 350M (+50MB)
         logging:
             driver: "json-file"
             options:
