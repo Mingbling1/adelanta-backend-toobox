@@ -73,16 +73,38 @@ async def _execute_tipo_cambio_update(
         # 📊 Obtener tipos de cambio existentes
         existing_records = await tipo_cambio_repo.get_all(limit=10000)
         existing_dates = {record.TipoCambioFecha for record in existing_records}
+        logger.warning(
+            f"🔍 DEBUG: Registros existentes encontrados: {len(existing_records)}"
+        )
+        logger.warning(
+            f"🔍 DEBUG: Primeras 10 fechas existentes: {sorted(list(existing_dates))[:10]}"
+        )
+        logger.warning(
+            f"🔍 DEBUG: Últimas 10 fechas existentes: {sorted(list(existing_dates))[-10:]}"
+        )
 
         # 📅 Generar todas las fechas del rango
         all_dates = {
             (start_dt + timedelta(days=i)).strftime("%Y-%m-%d")
             for i in range((end_dt - start_dt).days + 1)
         }
+        logger.warning(f"🔍 DEBUG: Total fechas en rango generado: {len(all_dates)}")
+        logger.warning(
+            f"🔍 DEBUG: Primeras 10 fechas del rango: {sorted(list(all_dates))[:10]}"
+        )
+        logger.warning(
+            f"🔍 DEBUG: Últimas 10 fechas del rango: {sorted(list(all_dates))[-10:]}"
+        )
 
         # 🔍 Identificar fechas faltantes
         missing_dates = list(all_dates - existing_dates)
         logger.info(f"📋 Fechas faltantes encontradas: {len(missing_dates)}")
+        if missing_dates:
+            logger.warning(f"🔍 DEBUG: Fechas faltantes: {sorted(missing_dates)}")
+        else:
+            logger.warning(
+                "🔍 DEBUG: No hay fechas faltantes - todas las fechas del rango ya están en la BD"
+            )
 
         if not missing_dates:
             return {
