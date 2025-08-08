@@ -18,6 +18,17 @@ class BaseProcessor:
     Centraliza la lógica de get_task_status() y formateo de respuestas
     """
 
+    def __init__(self, task_name: str = None, description: str = None):
+        """
+        🔧 Constructor base para processors
+
+        Args:
+            task_name: Nombre del task Celery (opcional)
+            description: Descripción del processor (opcional)
+        """
+        self.task_name = task_name
+        self.description = description
+
     def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """
         Obtener estado de una task de Celery con manejo robusto de errores
