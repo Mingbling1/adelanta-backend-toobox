@@ -1,7 +1,7 @@
 from repositories.datamart.KPIRepository import KPIRepository
 from models.datamart.KPIModel import KPIModel
 from fastapi import Depends
-import polars as pl
+import pandas as pd 
 from typing import Literal
 from utils.decorators import create_job
 from io import BytesIO
@@ -36,28 +36,18 @@ class KPIService(BaseService[KPIModel]):
         tipo: Literal["excel", "csv"] = "excel",
         informe: str | None = None,
     ) -> BytesIO:
-        logger.warning(
-            f"KPI get_all_to_file iniciado - tipo: {tipo}, informe: {informe}"
-        )
+        # 1) Traer todos los registros
+        # records: list[KPIModel] = await self.kpi_repository.get_all(
+        #     limit=None, offset=0
+        # )
+        # 1) Traer todos los registros como lista de dicts (sin pk)
+        rows = await self.kpi_repository.get_all_dicts(exclude_pk=True)
 
-        data_dicts = await self.kpi_repository.get_all_dicts(exclude_pk=True)
-        logger.warning(
-            f"KPI datos obtenidos - registros: {len(data_dicts) if data_dicts else 0}"
-        )
-
+        # 2) Construir el DataFrame en un hilo
         def _build_df():
-            if not data_dicts:
-                logger.warning("KPI sin datos - retornando DataFrame vacío")
-                return pl.DataFrame()
-
-            logger.warning(f"KPI creando DataFrame con {len(data_dicts)} registros")
-            df = pl.DataFrame(data_dicts, infer_schema_length=None)
-            logger.warning(
-                f"KPI DataFrame creado - columnas: {df.columns}, shape: {df.shape}"
-            )
-
+            # df = pd.DataFrame([r.to_dict() for r in records])
+            df = pd.DataFrame(rows) if rows else pd.DataFrame()
             if informe:
-                logger.warning(f"KPI aplicando filtro informe: {informe}")
                 columnas_esperadas = [
                     "CodigoLiquidacion",
                     "CodigoSolicitud",
@@ -141,51 +131,23 @@ class KPIService(BaseService[KPIModel]):
 
                 for col in columnas_esperadas:
                     if col not in df.columns:
-                        df = df.with_columns(pl.lit(None).alias(col))
-                df = df.select(columnas_esperadas)
-                logger.warning(f"KPI DataFrame filtrado - nueva shape: {df.shape}")
+                        df[col] = None
+                df = df[columnas_esperadas]
             return df
 
-        logger.warning("KPI iniciando construcción de DataFrame en thread")
         df = await asyncio.to_thread(_build_df)
-        logger.warning(f"KPI DataFrame final - shape: {df.shape}, tipo: {type(df)}")
 
+        # 3) Escribir el buffer en un hilo
         def _write_buffer() -> BytesIO:
-            logger.warning(f"KPI iniciando escritura - formato: {tipo}")
             buf = BytesIO()
+            if tipo.lower() == "csv":
+                csv_text = df.to_csv(index=False)
+                buf.write(csv_text.encode("utf-8"))
+            else:
+                with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+                    df.to_excel(writer, index=False, sheet_name="Sheet1")
+            buf.seek(0)
+            return buf
 
-            try:
-                if tipo.lower() == "csv":
-                    logger.warning("KPI escribiendo CSV")
-                    csv_content = df.write_csv()
-                    buf.write(csv_content.encode("utf-8"))
-                    logger.warning(
-                        f"KPI CSV escrito - tamaño buffer: {buf.tell()} bytes"
-                    )
-                else:
-                    logger.warning("KPI escribiendo Excel con df.write_excel")
-                    df.write_excel(
-                        autofilter=False,
-                        float_precision=2,
-                        workbook=buf,
-                    )
-                    logger.warning(
-                        f"KPI Excel escrito - tamaño buffer: {buf.tell()} bytes"
-                    )
-
-                buf.seek(0)
-                logger.warning("KPI buffer posicionado al inicio")
-                return buf
-
-            except Exception as e:
-                logger.warning(
-                    f"KPI ERROR en _write_buffer: {str(e)} - Tipo: {type(e)}"
-                )
-                raise
-
-        logger.warning("KPI iniciando escritura en thread")
         buffer = await asyncio.to_thread(_write_buffer)
-        logger.warning(
-            f"KPI proceso completado - buffer final tamaño: {buffer.tell()} bytes"
-        )
         return buffer
