@@ -10,9 +10,9 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 650M # Aumentado de 600M a 650M (+50MB)
+                    memory: 750M # Aumentado de 600M a 650M (+50MB)
                 reservations:
-                    memory: 350M # Aumentado de 300M a 350M (+50MB)
+                    memory: 450M # Aumentado de 300M a 350M (+50MB)
         logging:
             driver: "json-file"
             options:
@@ -52,31 +52,19 @@ services:
             - ./data/certbot/www:/var/www/certbot
         entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
-    # redis:
-    #     image: redis:latest
-    #     container_name: redis
-    #     ports:
-    #         - "6379:6379"
-    #     restart: unless-stopped
-    #     command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
-    #     deploy:
-    #         resources:
-    #             limits:
-    #                 memory: 250M    
-    #             reservations:
-    #                 memory: 100M
-    #     logging:
-    #         driver: "json-file"
-    #         options:
-    #             max-file: "1"
-    #             max-size: "100k"
-
     redis:
         image: redis:latest
         container_name: redis
         ports:
             - "6379:6379"
         restart: unless-stopped
+        command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
+        deploy:
+            resources:
+                limits:
+                    memory: 250M    
+                reservations:
+                    memory: 100M
         logging:
             driver: "json-file"
             options:
@@ -93,9 +81,9 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 950M # Aumentado de 800M a 950M (+150MB)
+                    memory: 850M # Aumentado de 800M a 950M (+150MB)
                 reservations:
-                    memory: 500M # Aumentado de 400M a 500M (+100MB)
+                    memory: 400M # Aumentado de 400M a 500M (+100MB)
         volumes:
             - ./templates:/app/templates
         environment:

@@ -7,7 +7,7 @@ from utils.decorators import create_job
 from io import BytesIO
 import asyncio
 from services.BaseService import BaseService
-from config.logger import logger 
+from config.logger import logger
 
 
 class KPIService(BaseService[KPIModel]):
@@ -36,10 +36,14 @@ class KPIService(BaseService[KPIModel]):
         tipo: Literal["excel", "csv"] = "excel",
         informe: str | None = None,
     ) -> BytesIO:
-        logger.warning(f"KPI get_all_to_file iniciado - tipo: {tipo}, informe: {informe}")
-        
+        logger.warning(
+            f"KPI get_all_to_file iniciado - tipo: {tipo}, informe: {informe}"
+        )
+
         data_dicts = await self.kpi_repository.get_all_dicts(exclude_pk=True)
-        logger.warning(f"KPI datos obtenidos - registros: {len(data_dicts) if data_dicts else 0}")
+        logger.warning(
+            f"KPI datos obtenidos - registros: {len(data_dicts) if data_dicts else 0}"
+        )
 
         def _build_df():
             if not data_dicts:
@@ -47,8 +51,10 @@ class KPIService(BaseService[KPIModel]):
                 return pl.DataFrame()
 
             logger.warning(f"KPI creando DataFrame con {len(data_dicts)} registros")
-            df = pl.DataFrame(data_dicts, infer_schema_length=None)
-            logger.warning(f"KPI DataFrame creado - columnas: {df.columns}, shape: {df.shape}")
+            df = pl.DataFrame(data_dicts, schema_overrides={"FechaConfirmado": pl.Datetime, "FechaOperacion": pl.Datetime,"TipoCambioFecha": pl.Datetime, "FechaPago": pl.Datetime,"FechaDesembolso": pl.Datetime})
+            logger.warning(
+                f"KPI DataFrame creado - columnas: {df.columns}, shape: {df.shape}"
+            )
 
             if informe:
                 logger.warning(f"KPI aplicando filtro informe: {informe}")
@@ -147,32 +153,39 @@ class KPIService(BaseService[KPIModel]):
         def _write_buffer() -> BytesIO:
             logger.warning(f"KPI iniciando escritura - formato: {tipo}")
             buf = BytesIO()
-            
+
             try:
                 if tipo.lower() == "csv":
                     logger.warning("KPI escribiendo CSV")
                     csv_content = df.write_csv()
                     buf.write(csv_content.encode("utf-8"))
-                    logger.warning(f"KPI CSV escrito - tamaño buffer: {buf.tell()} bytes")
+                    logger.warning(
+                        f"KPI CSV escrito - tamaño buffer: {buf.tell()} bytes"
+                    )
                 else:
                     logger.warning("KPI escribiendo Excel con df.write_excel")
                     df.write_excel(
+                        autofilter=False,
+                        float_precision=2,
                         workbook=buf,
-                        autofit=True,
-                        include_header=True,
-                        autofilter=True,
                     )
-                    logger.warning(f"KPI Excel escrito - tamaño buffer: {buf.tell()} bytes")
-                
+                    logger.warning(
+                        f"KPI Excel escrito - tamaño buffer: {buf.tell()} bytes"
+                    )
+
                 buf.seek(0)
                 logger.warning("KPI buffer posicionado al inicio")
                 return buf
-                
+
             except Exception as e:
-                logger.warning(f"KPI ERROR en _write_buffer: {str(e)} - Tipo: {type(e)}")
+                logger.warning(
+                    f"KPI ERROR en _write_buffer: {str(e)} - Tipo: {type(e)}"
+                )
                 raise
 
         logger.warning("KPI iniciando escritura en thread")
         buffer = await asyncio.to_thread(_write_buffer)
-        logger.warning(f"KPI proceso completado - buffer final tamaño: {buffer.tell()} bytes")
+        logger.warning(
+            f"KPI proceso completado - buffer final tamaño: {buffer.tell()} bytes"
+        )
         return buffer
