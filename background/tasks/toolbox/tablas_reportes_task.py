@@ -6,7 +6,6 @@ import pandas as pd
 import gc
 from datetime import datetime
 from typing import Dict, Any
-
 from config.celery_config import celery_app
 from config.repository_factory import create_repository_factory
 from config.logger import logger

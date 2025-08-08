@@ -4,6 +4,7 @@
 🔧 Patrón: Router → Celery Task (+ Repository Factory) → Database
 """
 
+from typing import Dict, Any
 from config.celery_config import celery_app
 from config.repository_factory import create_repository_factory
 from config.logger import logger
@@ -29,9 +30,6 @@ def tipo_cambio_task(self, batch_size: int = 1):
         dict: Resultado de la ejecución con estadísticas
     """
 
-    # 🔧 Repository Factory: Sesiones aisladas por task
-    repository_factory = create_repository_factory()
-
     try:
         # 📊 Logging inicial
         logger.info(
@@ -41,9 +39,7 @@ def tipo_cambio_task(self, batch_size: int = 1):
         # 🎯 Business Logic: Ejecutar actualización
         result = asyncio.run(
             _execute_tipo_cambio_update(
-                repository_factory=repository_factory,
                 batch_size=batch_size,
-                task_id=self.request.id,
             )
         )
 
@@ -57,15 +53,14 @@ def tipo_cambio_task(self, batch_size: int = 1):
 
 
 async def _execute_tipo_cambio_update(
-    repository_factory,
     batch_size: int = 1,
-    task_id: str = None,
-) -> dict:
+) -> Dict[str, Any]:
     """
     🔄 Lógica principal de actualización de tipo de cambio
     """
 
     # 📅 Configurar fechas usando BaseCronjob
+    repository_factory = create_repository_factory()
     start_dt = BaseCronjob.obtener_datetime_fecha_inicio()
     end_dt = BaseCronjob.obtener_datetime_fecha_fin()
 
@@ -101,7 +96,6 @@ async def _execute_tipo_cambio_update(
                 "message": "No hay fechas faltantes para actualizar",
                 "dates_processed": 0,
                 "dates_failed": 0,
-                "task_id": task_id,
             }
 
         # 🔄 Procesar en lotes
@@ -145,7 +139,6 @@ async def _execute_tipo_cambio_update(
             "dates_processed": len(final_results),
             "dates_failed": len(failed_dates),
             "failed_dates": list(failed_dates),
-            "task_id": task_id,
             "date_range": f"{start_dt.strftime('%Y-%m-%d')} → {end_dt.strftime('%Y-%m-%d')}",
         }
 
