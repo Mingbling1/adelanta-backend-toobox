@@ -51,7 +51,7 @@ class KPIService(BaseService[KPIModel]):
                 return pl.DataFrame()
 
             logger.warning(f"KPI creando DataFrame con {len(data_dicts)} registros")
-            df = pl.DataFrame(data_dicts, schema_overrides={"FechaConfirmado": pl.Datetime, "FechaOperacion": pl.Datetime,"TipoCambioFecha": pl.Datetime, "FechaPago": pl.Datetime,"FechaDesembolso": pl.Datetime})
+            df = pl.DataFrame(data_dicts, infer_schema_length=None)
             logger.warning(
                 f"KPI DataFrame creado - columnas: {df.columns}, shape: {df.shape}"
             )

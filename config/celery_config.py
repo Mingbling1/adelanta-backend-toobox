@@ -25,10 +25,10 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="America/Lima",
     enable_utc=True,
-    # 🧠 CONFIGURACIÓN DE MEMORIA CRÍTICA - 2GB SYSTEM
+    # 🧠 CONFIGURACIÓN DE MEMORIA CRÍTICA - ANTI-OOM OPTIMIZADO
     worker_max_tasks_per_child=1,  # UNA SOLA TAREA → limpia memoria completamente
     worker_prefetch_multiplier=1,  # Sin prefetch → menor RAM usage
-    worker_max_memory_per_child=750000, 
+    worker_max_memory_per_child=600000,  # 600MB límite por worker (reducido de 750MB)
     # 🚀 CONFIGURACIÓN DE PERFORMANCE
     task_acks_late=True,  # Confirmar después de completar → mayor confiabilidad
     task_reject_on_worker_lost=True,  # Rechazar tareas si worker falla

@@ -10,7 +10,7 @@ services:
         deploy:
             resources:
                 limits:
-                    memory: 750M # Aumentado de 600M a 650M (+50MB)
+                    memory: 1000M # Aumentado de 600M a 650M (+50MB)
                 reservations:
                     memory: 450M # Aumentado de 300M a 350M (+50MB)
         logging:
