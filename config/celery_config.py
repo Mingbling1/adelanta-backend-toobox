@@ -62,12 +62,19 @@ celery_app.conf.update(
     },
     # 🕐 CONFIGURACIÓN DE CELERY BEAT - CRÍTICA PARA FUNCIONAMIENTO
     beat_schedule={
-        # 📊 Actualización automática de Tablas Reportes - 2 veces al día
+        # 📊 Actualización automática de Tablas Reportes - 3 veces al día
         "actualizar-tablas-reportes-manana": {
             "task": "toolbox.tablas_reportes",
             "schedule": crontab(
                 hour=7, minute=0
             ),  # Todos los días a las 7:00 AM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        "actualizar-tablas-reportes-mediodia": {
+            "task": "toolbox.tablas_reportes",
+            "schedule": crontab(
+                hour=12, minute=0
+            ),  # Todos los días a las 12:00 PM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
         },
         "actualizar-tablas-reportes-tarde": {
@@ -77,15 +84,45 @@ celery_app.conf.update(
             ),  # Todos los días a las 6:00 PM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
         },
-        # 💱 Actualización automática de Tipo de Cambio SUNAT - Diaria
+        # 📈 Actualización automática de KPI Acumulado - 2 veces al día
+        "actualizar-kpi-acumulado-manana": {
+            "task": "toolbox.kpi_acumulado",
+            "schedule": crontab(
+                hour=7, minute=30
+            ),  # Todos los días a las 7:30 AM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        "actualizar-kpi-acumulado-mediodia": {
+            "task": "toolbox.kpi_acumulado",
+            "schedule": crontab(
+                hour=12, minute=30
+            ),  # Todos los días a las 12:30 PM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        # � Actualización automática de Tablas CXC - 2 veces al día
+        "actualizar-tablas-cxc-manana": {
+            "task": "toolbox.tablas_cxc",
+            "schedule": crontab(
+                hour=8, minute=0
+            ),  # Todos los días a las 8:00 AM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        "actualizar-tablas-cxc-tarde": {
+            "task": "toolbox.tablas_cxc",
+            "schedule": crontab(
+                hour=13, minute=0
+            ),  # Todos los días a las 1:00 PM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+        },
+        # �💱 Actualización automática de Tipo de Cambio SUNAT - Diaria
         "actualizar-tipo-cambio-diario": {
             "task": "toolbox.tipo_cambio",
             "schedule": crontab(
-                hour=8, minute=30
-            ),  # Todos los días a las 8:30 AM (GMT-5 Lima)
+                hour=6, minute=30
+            ),  # Todos los días a las 6:30 AM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
             # 📅 Solo actualizar últimos 7 días por defecto
-            "kwargs": {"batch_size": 3},
+            "kwargs": {"batch_size": 1},
         },
     },
     beat_scheduler="celery.beat:PersistentScheduler",  # Scheduler por defecto
