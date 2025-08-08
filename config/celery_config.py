@@ -44,6 +44,7 @@ celery_app.conf.update(
         "toolbox.kpi_acumulado": {"queue": "cronjobs"},
         "toolbox.tablas_reportes": {"queue": "cronjobs"},
         "toolbox.tablas_cxc": {"queue": "cronjobs"},
+        "toolbox.tipo_cambio": {"queue": "cronjobs"},  # 🆕 Nuevo task Tipo de Cambio
     },
     # Configuración de colas
     task_default_queue="default",
@@ -75,6 +76,16 @@ celery_app.conf.update(
                 hour=18, minute=0
             ),  # Todos los días a las 6:00 PM (GMT-5 Lima)
             "options": {"queue": "cronjobs"},
+        },
+        # 💱 Actualización automática de Tipo de Cambio SUNAT - Diaria
+        "actualizar-tipo-cambio-diario": {
+            "task": "toolbox.tipo_cambio",
+            "schedule": crontab(
+                hour=8, minute=30
+            ),  # Todos los días a las 8:30 AM (GMT-5 Lima)
+            "options": {"queue": "cronjobs"},
+            # 📅 Solo actualizar últimos 7 días por defecto
+            "kwargs": {"batch_size": 3},
         },
     },
     beat_scheduler="celery.beat:PersistentScheduler",  # Scheduler por defecto

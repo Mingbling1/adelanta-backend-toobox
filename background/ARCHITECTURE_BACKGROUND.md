@@ -31,6 +31,7 @@ background/
 ## 📋 Patrones de Implementación
 
 ### Task Estándar
+
 ```python
 # background/tasks/toolbox/ejemplo_task.py
 @celery_app.task(name="toolbox.ejemplo", bind=True, max_retries=0)
@@ -44,6 +45,7 @@ def ejemplo_task(self):
 ```
 
 ### Router Estándar
+
 ```python
 # background/routers/toolbox/ejemplo_router.py
 @router.post("/execute", response_class=ORJSONResponse)
@@ -52,23 +54,26 @@ async def execute_task():
     processor = EjemploProcessor()
     return await processor.run()
 
-@router.get("/status/{task_id}")
-async def get_status(task_id: str):
-    return BaseProcessor.format_task_response(task_id)
+# ❌ NO DUPLICAR - Status centralizado en base_router.py
+# @router.get("/status/{task_id}") <- ELIMINAR si existe
+
+# ❌ NO CREAR endpoints adicionales innecesarios (/info, /config, etc.)
+# ✅ SOLO /execute - Mantener routers específicos MÍNIMOS
 ```
 
 ### BaseProcessor Centralizado
+
 ```python
 # background/processors/base_processor.py
 class BaseProcessor:
     @staticmethod
     def format_task_response(task_id: str):
         """📊 Status unificado para cualquier task"""
-    
-    @staticmethod 
+
+    @staticmethod
     def get_available_tasks():
         """🤖 Auto-discovery desde celery_app.tasks"""
-    
+
     @staticmethod
     def get_scheduled_tasks():
         """🕐 Beat schedule info para frontend"""
@@ -77,12 +82,16 @@ class BaseProcessor:
 ## 🎯 Principios de Arquitectura
 
 ### ✅ Reglas Core
-- **Tasks**: Contienen business logic + Celery orchestration
-- **Repository Factory**: NO usar `@inject`, sesiones aisladas por task
-- **Processors**: OPCIONALES, solo wrappers de compatibilidad
-- **BaseProcessor**: Centraliza status/formateo, elimina duplicación
+
+-   **Tasks**: Contienen business logic + Celery orchestration
+-   **Repository Factory**: NO usar `@inject`, sesiones aisladas por task
+-   **Processors**: OPCIONALES, solo wrappers de compatibilidad
+-   **BaseProcessor**: Centraliza status/formateo, elimina duplicación
+-   **⚠️ CRÍTICO**: NO duplicar `/status/{task_id}` en routers específicos - YA centralizado en `base_router.py`
+-   **🚨 MINIMALISMO**: Routers específicos SOLO `/execute` - NO crear endpoints innecesarios (/info, /config, etc.)
 
 ### ✅ Configuración Celery
+
 ```python
 # config/celery_config.py
 include=["background.tasks.toolbox"]
@@ -93,7 +102,7 @@ beat_schedule = {
         "schedule": crontab(hour=7, minute=0),  # 7:00 AM
     },
     "actualizar-tablas-reportes-tarde": {
-        "task": "toolbox.tablas_reportes", 
+        "task": "toolbox.tablas_reportes",
         "schedule": crontab(hour=18, minute=0), # 6:00 PM
     },
 }
@@ -102,6 +111,7 @@ beat_schedule = {
 ## 🚀 API Endpoints
 
 ### Centralizados (base_router.py)
+
 ```bash
 GET  /tasks/status/{task_id}     # Status para cualquier task
 GET  /tasks/available            # Auto-discovery de tasks disponibles
@@ -109,10 +119,15 @@ GET  /tasks/scheduled            # Beat schedule info para frontend
 ```
 
 ### Específicos (toolbox/)
+
 ```bash
 POST /tasks/execute/kpi-acumulado     # Ejecutar task específica
 POST /tasks/execute/tablas-reportes   # Con control remoto
 POST /tasks/execute/tablas-cxc        # Logging + error handling
+POST /tasks/execute/tipo-cambio       # Actualización SUNAT
+
+# ❌ NO crear endpoints adicionales (/info, /config, /health, etc.)
+# ✅ SOLO /execute por módulo - Arquitectura MINIMALISTA
 ```
 
 ## 🔧 Comandos de Desarrollo
@@ -132,34 +147,53 @@ pytest -m production            # Tests producción (MySQL real)
 ## 📊 Estado Actual del Sistema
 
 ### ✅ Tasks Disponibles
-- `toolbox.kpi_acumulado` - Actualización KPI consolidados
-- `toolbox.tablas_reportes` - Reportes automáticos (7AM/6PM)
-- `toolbox.tablas_cxc` - Cuentas por cobrar
-- `toolbox.kpi` - KPI generales
+
+-   `toolbox.kpi_acumulado` - Actualización KPI consolidados
+-   `toolbox.tablas_reportes` - Reportes automáticos (7AM/6PM)
+-   `toolbox.tablas_cxc` - Cuentas por cobrar
+-   `toolbox.tipo_cambio` - Tipos de cambio SUNAT ⭐ **MIGRADO V2**
+-   `toolbox.kpi` - KPI generales
 
 ### ✅ Automatización Configurada
-- **7:00 AM**: Ejecución automática tablas_reportes
-- **6:00 PM**: Ejecución automática tablas_reportes
-- **Scheduler**: PersistentScheduler con archivo de estado
+
+-   **7:00 AM**: Ejecución automática tablas_reportes
+-   **6:00 PM**: Ejecución automática tablas_reportes
+-   **Scheduler**: PersistentScheduler con archivo de estado
 
 ### ✅ Endpoints Funcionales
-- Auto-discovery de tasks desde celery_app
-- Status centralizado con formateo unificado
-- Beat schedule info para dashboard frontend
+
+-   Auto-discovery de tasks desde celery_app
+-   Status centralizado con formateo unificado
+-   Beat schedule info para dashboard frontend
 
 ## 🛠️ Troubleshooting
 
 ### ❌ Task no aparece en /tasks/available
+
 1. Verificar import en `background/tasks/toolbox/__init__.py`
 2. Verificar decorador: `@celery_app.task(name="toolbox.xxx")`
 3. Verificar include en `config/celery_config.py`
 
+### ❌ Status endpoint duplicado
+
+1. **ERROR COMÚN**: Crear `/status/{task_id}` en router específico
+2. **SOLUCIÓN**: ELIMINAR - Ya centralizado en `base_router.py`
+3. **USAR**: Solo `/tasks/status/{task_id}` desde base_router
+
+### ❌ Endpoints innecesarios (/info, /config, etc.)
+
+1. **ERROR COMÚN**: Crear endpoints adicionales como `/info`, `/config`, `/health`
+2. **SOLUCIÓN**: NO crear - Mantener routers específicos SOLO con `/execute`
+3. **PRINCIPIO**: Arquitectura MINIMALISTA - Solo lo esencial
+
 ### ❌ Celery Beat restart (exit code 137)
+
 1. Verificar formato crontab (no strings): `crontab(hour=7, minute=0)`
 2. Verificar memoria Docker: aumentar límites en docker-compose.yml
 3. Verificar beat_schedule syntax en celery_config.py
 
 ### 🆕 Agregar Nueva Task
+
 ```bash
 # 1. Crear task
 touch background/tasks/toolbox/nueva_task.py
@@ -177,16 +211,17 @@ from .nueva_task import nueva_task
 
 ## 📈 Ventajas del Sistema Actual
 
-- **🔄 Auto-Discovery**: Nuevas tasks detectadas automáticamente
-- **🛡️ Robustez**: Manejo unificado de errores y fallbacks
-- **📊 Observabilidad**: Logging detallado y debug info
-- **🧹 Sin Duplicación**: ~150 líneas eliminadas por centralización
-- **⚡ Performance**: ORJSONResponse y pool optimizado
-- **🕐 Programación**: Beat schedule para tareas recurrentes
+-   **🔄 Auto-Discovery**: Nuevas tasks detectadas automáticamente
+-   **🛡️ Robustez**: Manejo unificado de errores y fallbacks
+-   **📊 Observabilidad**: Logging detallado y debug info
+-   **🧹 Sin Duplicación**: ~150 líneas eliminadas por centralización
+-   **⚡ Performance**: ORJSONResponse y pool optimizado
+-   **🕐 Programación**: Beat schedule para tareas recurrentes
 
 ## 📋 Frontend Integration
 
 ### GET /tasks/scheduled Response
+
 ```json
 {
     "success": true,

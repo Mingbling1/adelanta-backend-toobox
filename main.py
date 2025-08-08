@@ -20,6 +20,7 @@ from background.routers.toolbox import (
     tablas_reportes_router,
     tablas_cxc_router,
     kpi_acumulado_router,
+    tipo_cambio_router,  # 🆕 Nuevo router Tipo de Cambio
 )  # CELERY TASKS TOOLBOX
 from background.routers import base_router  # CELERY TASKS
 from routers.auth import (
@@ -135,6 +136,15 @@ app.include_router(
 app.include_router(
     kpi_acumulado_router.router,
     prefix="/background/toolbox/kpi-acumulado",
+)
+app.include_router(
+    tipo_cambio_router.router,
+    prefix="/background/toolbox/tipo-cambio",
+    tags=["Background Tasks - Tipo de Cambio"],
+)
+app.include_router(
+    tipo_cambio_router.router,
+    prefix="/background/toolbox/tipo-cambio",
 )
 # AUTH
 app.include_router(AuthRouter.router, prefix="/auth", tags=["Auth"])
