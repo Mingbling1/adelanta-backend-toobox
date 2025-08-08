@@ -4,8 +4,8 @@
 Wrappers opcionales de compatibilidad para tasks Celery
 """
 
-from .kpi_acumulado_processor import KpiAcumuladoProcessor
-from .tablas_cxc_processor import TablasCxcProcessor
+from .kpi_acumulado_processor import KPIAcumuladoProcessor
+from .tablas_cxc_processor import TablasCXCProcessor
 from .tablas_reportes_processor import TablasReportesProcessor
 from .tipo_cambio_processor import TipoCambioProcessor  # 🆕 Nuevo processor
 
