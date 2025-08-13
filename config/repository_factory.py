@@ -37,7 +37,6 @@ class RepositoryFactory:
                     "connect_timeout": 15,  # Timeout aumentado
                     "charset": "utf8mb4",
                     "autocommit": False,  # Control explícito de transacciones
-                    "isolation_level": "READ_COMMITTED",  # Nivel de aislamiento optimizado
                 },
             },
         )
