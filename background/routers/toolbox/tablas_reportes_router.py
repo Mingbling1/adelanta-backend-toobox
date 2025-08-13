@@ -31,8 +31,8 @@ async def execute_tablas_reportes_task():
         # Instanciar el wrapper de Celery
         reportes_celery = TablasReportesProcessor()
 
-        # Ejecutar task (sin await - Celery delay es síncrono)
-        result = reportes_celery.run_sync()
+        # Ejecutar task
+        result = reportes_celery.run()
 
         logger.info(f"✅ API: Task enviada exitosamente - ID: {result['task_id']}")
 
