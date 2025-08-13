@@ -1,10 +1,10 @@
 # background/tasks/toolbox/tablas_reportes_task.py
 """� Celery Task para Tablas Reportes - Business Logic Completa"""
 
+import asyncio
 import pandas as pd
 from datetime import datetime
 from typing import Dict, Any
-from asgiref.sync import async_to_sync  # 🆕 Usar async_to_sync en lugar de asyncio.run
 from config.celery_config import celery_app
 from config.repository_factory import create_repository_factory
 from config.logger import logger
@@ -31,8 +31,8 @@ def tablas_reportes_task(self) -> Dict[str, Any]:
     try:
         logger.info("🚀 Iniciando task: Tablas Reportes")
 
-        # 🔧 Usar async_to_sync en lugar de asyncio.run para mejor compatibilidad con Celery
-        result = async_to_sync(_actualizar_tablas_reportes_logic)()
+        # Ejecutar lógica async en event loop
+        result = asyncio.run(_actualizar_tablas_reportes_logic())
 
         logger.info("✅ Task completada: Tablas Reportes")
         return {
