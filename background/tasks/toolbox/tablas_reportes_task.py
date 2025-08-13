@@ -86,13 +86,9 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         # Crear repositories frescos
         tipo_cambio_repo = await repo_factory.create_tipo_cambio_repository()
         kpi_repo = await repo_factory.create_kpi_repository()
-        nuevos_clientes_repo = (
-            await repo_factory.create_nuevos_clientes_nuevos_pagadores_repository()
-        )
+        nuevos_clientes_repo = await repo_factory.create_nuevos_clientes_nuevos_pagadores_repository()
         saldos_repo = await repo_factory.create_saldos_repository()
-        actualizacion_reportes_repo = (
-            await repo_factory.create_actualizacion_reportes_repository()
-        )
+        actualizacion_reportes_repo = await repo_factory.create_actualizacion_reportes_repository()
 
         logger.info("📊 Obteniendo datos de TipoCambio...")
 
@@ -117,13 +113,17 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
 
         logger.info(f"💾 Insertando {len(kpi_calcular)} registros KPI...")
 
-        await kpi_repo.delete_and_bulk_insert_chunked(kpi_calcular, chunk_size=2000)
+        await kpi_repo.delete_and_bulk_insert_chunked(
+            kpi_calcular, chunk_size=2000
+        )
 
         logger.info("🧮 Calculando NuevosClientesNuevosPagadores...")
 
         # NuevosClientesNuevosPagadores
         nuevos_clientes_nuevos_pagadores_calcular = (
-            NuevosClientesNuevosPagadoresCalcular(pd.DataFrame(kpi_calcular)).calcular(
+            NuevosClientesNuevosPagadoresCalcular(
+                pd.DataFrame(kpi_calcular)
+            ).calcular(
                 start_date=BaseCronjob.obtener_string_fecha_inicio(tipo=1),
                 end_date=BaseCronjob.obtener_string_fecha_fin(tipo=1),
                 ruc_c_col="RUCCliente",
@@ -135,9 +135,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
             )
         )
 
-        logger.info(
-            f"💾 Insertando {len(nuevos_clientes_nuevos_pagadores_calcular)} registros NuevosClientes..."
-        )
+        logger.info(f"💾 Insertando {len(nuevos_clientes_nuevos_pagadores_calcular)} registros NuevosClientes...")
 
         await nuevos_clientes_repo.delete_and_bulk_insert_chunked(
             nuevos_clientes_nuevos_pagadores_calcular, chunk_size=2000
@@ -154,88 +152,59 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
             saldos_calcular, chunk_size=2000
         )
 
-        # ✅ Preparar información de registros para el estado exitoso
-        records_info = {
-            "kpi": len(kpi_calcular) if kpi_calcular else 0,
-            "nuevos_clientes": (
-                len(nuevos_clientes_nuevos_pagadores_calcular)
-                if nuevos_clientes_nuevos_pagadores_calcular
-                else 0
-            ),
-            "saldos": len(saldos_calcular) if saldos_calcular else 0,
+        # Obtenemos el timestamp
+        now = datetime.now(BaseCronjob.peru_tz)
+
+        # Actualizamos en la base de datos mediante el repositorio utilizando el método create
+        await actualizacion_reportes_repo.create(
+            {"ultima_actualizacion": now, "estado": "Success", "detalle": None}
+        )
+
+        # Si todo se ejecuta sin errores, se guarda en Redis el status Active con la hora actual
+        now_str = now.isoformat()
+        status_value = orjson.dumps(
+            {"status": "Active", "timestamp": now_str, "error": None}
+        ).decode("utf-8")
+        client = redis_client_manager.get_client()
+        await client.set(status_key, status_value)
+
+        logger.info("✅ Tablas Reportes completado exitosamente")
+        
+        # Retornamos resultado similar al cronjob
+        return {
+            "status": "success",
+            "records": {
+                "kpi": len(kpi_calcular) if kpi_calcular else 0,
+                "nuevos_clientes": (
+                    len(nuevos_clientes_nuevos_pagadores_calcular)
+                    if nuevos_clientes_nuevos_pagadores_calcular
+                    else 0
+                ),
+                "saldos": len(saldos_calcular) if saldos_calcular else 0,
+            },
+            "timestamp": now_str,
         }
 
-        # 🎯 Guardar estado exitoso de forma unificada
-        result = await _save_success_status(
-            actualizacion_reportes_repo, status_key, records_info
-        )
-        logger.info("✅ Tablas Reportes completado exitosamente")
-        return result
-
     except Exception as e:
-        # 🎯 Guardar estado de error de forma unificada
-        await _save_error_status(actualizacion_reportes_repo, status_key, str(e))
+        now = datetime.now(BaseCronjob.peru_tz)
+        await actualizacion_reportes_repo.create(
+            {"ultima_actualizacion": now, "estado": "Error", "detalle": str(e)}
+        )
+        now_str = now.isoformat()
+        status_value = orjson.dumps(
+            {"status": "Error", "timestamp": now_str, "error": str(e)}
+        ).decode("utf-8")
+        client = redis_client_manager.get_client()
+        await client.set(status_key, status_value)
         logger.error(f"❌ Error en lógica Tablas Reportes: {str(e)}")
         raise e
 
     finally:
-        # 🧹 Cleanup síncrono para evitar event loop issues
+        # Limpiar recursos del factory de forma robusta
         try:
             logger.info("🧹 Limpiando recursos...")
-            # Cleanup inmediato sin await para evitar problemas de event loop
-            if hasattr(repo_factory, "_session") and repo_factory._session:
-                try:
-                    # Intentar cerrar de forma síncrona si es posible
-                    pass  # El cleanup se hará automáticamente al salir del contexto
-                except Exception:
-                    pass
+            await repo_factory.cleanup()
             gc.collect()
             logger.info("✅ Recursos limpiados")
         except Exception as cleanup_error:
             logger.error(f"⚠️ Error limpiando recursos: {cleanup_error}")
-
-
-async def _save_success_status(
-    actualizacion_reportes_repo, status_key: str, records_info: dict
-) -> dict:
-    """🎯 Guardar estado exitoso de forma unificada"""
-    now = datetime.now(BaseCronjob.peru_tz)
-
-    # Guardar en base de datos
-    await actualizacion_reportes_repo.create(
-        {"ultima_actualizacion": now, "estado": "Success", "detalle": None}
-    )
-
-    # Guardar en Redis
-    now_str = now.isoformat()
-    status_value = orjson.dumps(
-        {"status": "Active", "timestamp": now_str, "error": None}
-    ).decode("utf-8")
-    client = redis_client_manager.get_client()
-    await client.set(status_key, status_value)
-
-    return {
-        "status": "success",
-        "records": records_info,
-        "timestamp": now_str,
-    }
-
-
-async def _save_error_status(
-    actualizacion_reportes_repo, status_key: str, error_message: str
-):
-    """🎯 Guardar estado de error de forma unificada"""
-    now = datetime.now(BaseCronjob.peru_tz)
-
-    # Guardar en base de datos
-    await actualizacion_reportes_repo.create(
-        {"ultima_actualizacion": now, "estado": "Error", "detalle": error_message}
-    )
-
-    # Guardar en Redis
-    now_str = now.isoformat()
-    status_value = orjson.dumps(
-        {"status": "Error", "timestamp": now_str, "error": error_message}
-    ).decode("utf-8")
-    client = redis_client_manager.get_client()
-    await client.set(status_key, status_value)
