@@ -89,7 +89,6 @@ services:
         environment:
             - REDIS_URL=redis://redis:6379/0
             - CELERY_WORKER_HIJACK_ROOT_LOGGER=False
-            - CELERY_WORKER_LOG_FORMAT="[%(asctime)s: %(levelname)s/%(processName)s] %(message)s"
         depends_on:
             - redis
             - web
