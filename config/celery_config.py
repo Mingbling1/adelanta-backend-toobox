@@ -17,7 +17,7 @@ celery_app = Celery(
     ],
 )
 
-# Configuración avanzada de Celery - OPTIMIZADO PARA 2GB RAM / 2 CORES
+# Configuración avanzada de Celery - OPTIMIZADO PARA 4GB RAM / MULTI-CORE
 celery_app.conf.update(
     # Configuración de tareas
     task_serializer="json",
@@ -25,19 +25,24 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="America/Lima",
     enable_utc=True,
-    # 🧠 CONFIGURACIÓN DE MEMORIA CRÍTICA - ANTI-OOM OPTIMIZADO
-    worker_max_tasks_per_child=1,  # UNA SOLA TAREA → limpia memoria completamente
-    worker_prefetch_multiplier=1,  # Sin prefetch → menor RAM usage
-    worker_max_memory_per_child=600000,  # 600MB límite por worker (reducido de 750MB)
-    # 🚀 CONFIGURACIÓN DE PERFORMANCE
+    # 🧠 CONFIGURACIÓN DE MEMORIA MEJORADA - 4GB RAM DISPONIBLE
+    worker_max_tasks_per_child=5,  # Más tareas antes de restart → mejor throughput
+    worker_prefetch_multiplier=2,  # Prefetch moderado → balance memoria/performance
+    worker_max_memory_per_child=900000,  # 900MB límite por worker (aumentado)
+    # 🚀 CONFIGURACIÓN DE PERFORMANCE MEJORADA
     task_acks_late=True,  # Confirmar después de completar → mayor confiabilidad
     task_reject_on_worker_lost=True,  # Rechazar tareas si worker falla
     worker_disable_rate_limits=True,  # Sin rate limits → mejor performance
-    # 🔧 CONFIGURACIÓN DE THREADS (optimizado para 2 cores)
-    worker_pool="solo",  # Threads en lugar de procesos → menor memoria
-    worker_concurrency=1,  # 2 threads para 2 cores físicos
+    # 🔧 CONFIGURACIÓN MULTI-THREADING (prefork para mejor paralelismo)
+    worker_pool="prefork",  # Procesos en lugar de threads → mejor paralelismo
+    worker_concurrency=4,  # 4 procesos para aprovechar múltiples cores
+    # 🔄 CONFIGURACIÓN DE TIMEOUT Y RETRY
+    task_soft_time_limit=1800,  # 30 minutos soft limit
+    task_time_limit=2100,  # 35 minutos hard limit
+    task_default_retry_delay=60,  # Retry después de 1 minuto
+    task_max_retries=3,  # Máximo 3 reintentos
     # Configuración de resultados
-    result_expires=3600,  # Resultados expiran en 1 hora
+    result_expires=7200,  # Resultados expiran en 2 horas (aumentado)
     task_track_started=True,  # Rastrear cuando las tareas inician
     # Configuración de routing - ACTUALIZADA para nueva estructura
     task_routes={

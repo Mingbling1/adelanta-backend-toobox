@@ -10,9 +10,9 @@ services:
         # deploy:
         #     resources:
         #         limits:
-        #             memory: 1000M # Aumentado de 600M a 650M (+50MB)
+        #             memory: 1200M # Aumentado para mejor performance con más workers
         #         reservations:
-        #             memory: 450M # Aumentado de 300M a 350M (+50MB)
+        #             memory: 600M # Aumentado base memory
         logging:
             driver: "json-file"
             options:
@@ -58,44 +58,46 @@ services:
         ports:
             - "6379:6379"
         restart: unless-stopped
-        command: redis-server --maxmemory 200mb --maxmemory-policy allkeys-lru
+        command: redis-server --maxmemory 400mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300
         deploy:
             resources:
                 limits:
-                    memory: 250M    
+                    memory: 500M # Aumentado para manejar más tareas
                 reservations:
-                    memory: 100M
+                    memory: 200M # Aumentado base memory
         logging:
             driver: "json-file"
             options:
-                max-file: "1"
-                max-size: "100k"
+                max-file: "2"
+                max-size: "150k"
 
     celery-worker:
         image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest
         container_name: celery_worker
         env_file:
             - ./.env
-        command: uv run celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=1 --pool=solo --max-tasks-per-child=1
+        command: uv run celery -A config.celery_config worker --loglevel=info --queues=cronjobs,default --concurrency=4 --pool=prefork --max-tasks-per-child=5 --prefetch-multiplier=2
         restart: unless-stopped
         deploy:
             resources:
                 limits:
-                    memory: 850M # Aumentado de 800M a 950M (+150MB)
+                    memory: 1200M # Aumentado para manejar más tareas concurrentes
                 reservations:
-                    memory: 400M # Aumentado de 400M a 500M (+100MB)
+                    memory: 600M # Aumentado base memory
         volumes:
             - ./templates:/app/templates
         environment:
             - REDIS_URL=redis://redis:6379/0
+            - CELERY_WORKER_HIJACK_ROOT_LOGGER=False
+            - CELERY_WORKER_LOG_FORMAT="[%(asctime)s: %(levelname)s/%(processName)s] %(message)s"
         depends_on:
             - redis
             - web
         logging:
             driver: "json-file"
             options:
-                max-file: "1"
-                max-size: "100k"
+                max-file: "3"
+                max-size: "200k"
 
     celery-beat:
         image: ${ECR_REPOSITORY_URI}/adelanta-backend-toolbox:latest

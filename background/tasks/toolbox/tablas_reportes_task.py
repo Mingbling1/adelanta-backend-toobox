@@ -32,8 +32,19 @@ def tablas_reportes_task(self) -> Dict[str, Any]:
     try:
         logger.info("🚀 Iniciando task: Tablas Reportes")
 
-        # Ejecutar lógica async en event loop
-        result = asyncio.run(_actualizar_tablas_reportes_logic())
+        # Crear event loop aislado para evitar conflictos con Celery worker
+        loop = None
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(_actualizar_tablas_reportes_logic())
+        finally:
+            if loop is not None:
+                try:
+                    loop.close()
+                finally:
+                    # Limpiar event loop del hilo para evitar efectos colaterales
+                    asyncio.set_event_loop(None)
 
         logger.info("✅ Task completada: Tablas Reportes")
         return {
@@ -86,9 +97,13 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         # Crear repositories frescos
         tipo_cambio_repo = await repo_factory.create_tipo_cambio_repository()
         kpi_repo = await repo_factory.create_kpi_repository()
-        nuevos_clientes_repo = await repo_factory.create_nuevos_clientes_nuevos_pagadores_repository()
+        nuevos_clientes_repo = (
+            await repo_factory.create_nuevos_clientes_nuevos_pagadores_repository()
+        )
         saldos_repo = await repo_factory.create_saldos_repository()
-        actualizacion_reportes_repo = await repo_factory.create_actualizacion_reportes_repository()
+        actualizacion_reportes_repo = (
+            await repo_factory.create_actualizacion_reportes_repository()
+        )
 
         logger.info("📊 Obteniendo datos de TipoCambio...")
 
@@ -113,17 +128,13 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
 
         logger.info(f"💾 Insertando {len(kpi_calcular)} registros KPI...")
 
-        await kpi_repo.delete_and_bulk_insert_chunked(
-            kpi_calcular, chunk_size=2000
-        )
+        await kpi_repo.delete_and_bulk_insert_chunked(kpi_calcular, chunk_size=2000)
 
         logger.info("🧮 Calculando NuevosClientesNuevosPagadores...")
 
         # NuevosClientesNuevosPagadores
         nuevos_clientes_nuevos_pagadores_calcular = (
-            NuevosClientesNuevosPagadoresCalcular(
-                pd.DataFrame(kpi_calcular)
-            ).calcular(
+            NuevosClientesNuevosPagadoresCalcular(pd.DataFrame(kpi_calcular)).calcular(
                 start_date=BaseCronjob.obtener_string_fecha_inicio(tipo=1),
                 end_date=BaseCronjob.obtener_string_fecha_fin(tipo=1),
                 ruc_c_col="RUCCliente",
@@ -135,7 +146,9 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
             )
         )
 
-        logger.info(f"💾 Insertando {len(nuevos_clientes_nuevos_pagadores_calcular)} registros NuevosClientes...")
+        logger.info(
+            f"💾 Insertando {len(nuevos_clientes_nuevos_pagadores_calcular)} registros NuevosClientes..."
+        )
 
         await nuevos_clientes_repo.delete_and_bulk_insert_chunked(
             nuevos_clientes_nuevos_pagadores_calcular, chunk_size=2000
@@ -169,7 +182,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         await client.set(status_key, status_value)
 
         logger.info("✅ Tablas Reportes completado exitosamente")
-        
+
         # Retornamos resultado similar al cronjob
         return {
             "status": "success",

@@ -22,19 +22,22 @@ class RepositoryFactory:
     """
 
     def __init__(self):
-        # Crear session manager con configuración optimizada para Celery
+        # Crear session manager con configuración optimizada para Celery con más recursos
         self.session_manager = DatabaseSessionManager(
             host=str(settings.DATABASE_MYSQL_URL),
             engine_kwargs={
                 "echo": False,  # Sin logging detallado en tasks
                 "future": True,
-                "pool_size": 2,  # Pool MUY pequeño para Celery
-                "max_overflow": 1,  # Overflow mínimo
+                "pool_size": 5,  # Pool más grande para múltiples workers
+                "max_overflow": 3,  # Overflow aumentado
                 "pool_recycle": 1800,  # Reciclar conexiones cada 30 min
                 "pool_pre_ping": True,  # Verificar conexiones antes de usar
+                "pool_timeout": 20,  # Timeout aumentado para evitar race conditions
                 "connect_args": {
-                    "connect_timeout": 10,
+                    "connect_timeout": 15,  # Timeout aumentado
                     "charset": "utf8mb4",
+                    "autocommit": False,  # Control explícito de transacciones
+                    "isolation_level": "READ_COMMITTED",  # Nivel de aislamiento optimizado
                 },
             },
         )
