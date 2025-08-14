@@ -430,5 +430,21 @@ class RedisClientManager:
                 logger.exception(f"Error refrescando TTL para {key}: {e}")
 
 
-# redis_client_manager = RedisClientManager("redis://localhost:6379")
-redis_client_manager = RedisClientManager(settings.REDIS_URL)
+class RedisClientManagerSync:
+    """Versión síncrona simplificada del RedisClientManager"""
+
+    def __init__(self, url: str):
+        self.url = url
+        self.sync_client = redis.Redis.from_url(url, decode_responses=True)
+
+    def get_client_sync(self) -> redis.Redis:
+        """Obtiene el cliente síncrono para operaciones Redis"""
+        if not self.sync_client:
+            raise Exception("Redis sync client is not initialized")
+        return self.sync_client
+
+
+redis_manager = RedisClientManager(settings.REDIS_URL)
+
+
+redis_manager_sync = RedisClientManagerSync(settings.REDIS_URL)

@@ -5,7 +5,7 @@ from typing import Set
 from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
-from config.redis import redis_client_manager
+from config.redis import redis_manager
 import json
 
 
@@ -47,7 +47,7 @@ class WebSocketManager(logging.Handler):
             self.job_statuses[job_id] = JobStatus.RUNNING
 
             # Establecer estado inicial en Redis
-            await redis_client_manager.set_job_status(
+            await redis_manager.set_job_status(
                 job_id=job_id,
                 status=JobStatus.RUNNING.value,
                 details={
@@ -57,8 +57,10 @@ class WebSocketManager(logging.Handler):
             )
 
             # Enviar mensaje de conexión estructurado
-            await self.send_structured_message("connection", f"🔌 Conectado al job: {job_id}", job_id)
-            
+            await self.send_structured_message(
+                "connection", f"🔌 Conectado al job: {job_id}", job_id
+            )
+
             # Enviar logs existentes desde Redis
             await self.send_existing_logs(job_id)
 
@@ -68,7 +70,7 @@ class WebSocketManager(logging.Handler):
     async def send_existing_logs(self, job_id: str):
         """Enviar logs existentes desde Redis al conectarse"""
         try:
-            logs = await redis_client_manager.get_job_logs(job_id, limit=50)
+            logs = await redis_manager.get_job_logs(job_id, limit=50)
 
             if logs:
                 for log_entry in reversed(logs):
@@ -83,10 +85,12 @@ class WebSocketManager(logging.Handler):
         self.active_jobs.discard(job_id)
         self.job_statuses.pop(job_id, None)
 
-    async def send_structured_message(self, message_type: str, message: str, job_id: str, close_after: bool = False):
+    async def send_structured_message(
+        self, message_type: str, message: str, job_id: str, close_after: bool = False
+    ):
         """
         Envía un mensaje estructurado al WebSocket.
-        
+
         Args:
             message_type: Tipo de mensaje ('log', 'success', 'error', 'connection')
             message: El mensaje a enviar
@@ -101,28 +105,32 @@ class WebSocketManager(logging.Handler):
                     "message": message,
                     "job_id": job_id,
                     "timestamp": datetime.now().isoformat(),
-                    "status": self.job_statuses.get(job_id, JobStatus.RUNNING).value
+                    "status": self.job_statuses.get(job_id, JobStatus.RUNNING).value,
                 }
-                
+
                 await websocket.send_text(json.dumps(structured_msg))
-                
+
                 # Si debe cerrar después de enviar
                 if close_after:
                     await asyncio.sleep(0.5)  # Dar tiempo para que el mensaje llegue
                     await self.close_connection(job_id)
 
             except Exception as e:
-                logging.error(f"Error sending structured message to WebSocket {job_id}: {e}")
+                logging.error(
+                    f"Error sending structured message to WebSocket {job_id}: {e}"
+                )
                 self.disconnect(job_id)
 
     async def send_message(self, message: str, job_id: str):
         """Método de compatibilidad - envía como log"""
         await self.send_structured_message("log", message, job_id)
 
-    async def notify_job_completion(self, job_id: str, success: bool = True, error_message: str = None):
+    async def notify_job_completion(
+        self, job_id: str, success: bool = True, error_message: str = None
+    ):
         """
         Notifica que un job ha terminado y cierra la conexión.
-        
+
         Args:
             job_id: ID del job
             success: Si terminó exitosamente
@@ -132,26 +140,27 @@ class WebSocketManager(logging.Handler):
             if success:
                 self.job_statuses[job_id] = JobStatus.SUCCESS
                 await self.send_structured_message(
-                    "success", 
-                    f"✅ Job {job_id} completado exitosamente", 
-                    job_id, 
-                    close_after=True
+                    "success",
+                    f"✅ Job {job_id} completado exitosamente",
+                    job_id,
+                    close_after=True,
                 )
             else:
                 self.job_statuses[job_id] = JobStatus.ERROR
-                error_msg = f"❌ Job {job_id} falló: {error_message or 'Error desconocido'}"
+                error_msg = (
+                    f"❌ Job {job_id} falló: {error_message or 'Error desconocido'}"
+                )
                 await self.send_structured_message(
-                    "error", 
-                    error_msg, 
-                    job_id, 
-                    close_after=True
+                    "error", error_msg, job_id, close_after=True
                 )
 
             # Actualizar estado en Redis (manejo seguro de errores)
             try:
-                await redis_client_manager.set_job_status(
+                await redis_manager.set_job_status(
                     job_id=job_id,
-                    status=JobStatus.SUCCESS.value if success else JobStatus.ERROR.value,
+                    status=(
+                        JobStatus.SUCCESS.value if success else JobStatus.ERROR.value
+                    ),
                     details={
                         "end_time": datetime.now().isoformat(),
                         "error_message": error_message if not success else None,
@@ -165,7 +174,6 @@ class WebSocketManager(logging.Handler):
 
         except Exception as e:
             logging.error(f"Error notifying job completion for {job_id}: {e}")
-
 
     async def close_connection(self, job_id: str):
         """Cierra una conexión WebSocket específica"""

@@ -8,15 +8,15 @@ from config.cronjob import cronjob_manager
 from cronjobs.BaseCronjob import BaseCronjob
 import asyncio
 from config.logger import logger
-from config.redis import redis_client_manager
+from config.redis import redis_manager
 
 
 @pytest.fixture(scope="function", autouse=True)
 async def setup_cronjobs():
     # Forzar que Redis se "despierte" haciendo un PING antes de arrancar los cronjobs
     try:
-        # await redis_client_manager.start()
-        pong = await redis_client_manager.connect()
+        # await redis_manager.start()
+        pong = await redis_manager.connect()
         logger.info("Redis ping response: %s", pong)
     except Exception as e:
         logger.error("Error pinging Redis: %s", e)

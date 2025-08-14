@@ -1,5 +1,5 @@
 from functools import wraps
-from config.redis import redis_client_manager
+from config.redis import redis_manager
 from config.logger import logger
 from typing import Callable, Any, Literal, Sequence, Union
 from io import BytesIO
@@ -75,7 +75,7 @@ def create_job(
                 else:
                     params = None
 
-                job_id = await redis_client_manager.create_job(
+                job_id = await redis_manager.create_job(
                     name,
                     description,
                     expire,

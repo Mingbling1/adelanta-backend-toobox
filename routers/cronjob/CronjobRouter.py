@@ -15,7 +15,7 @@ import aiohttp
 import json
 import asyncio
 from config.redis import (
-    redis_client_manager,
+    redis_manager,
     Job,
 )
 import orjson
@@ -286,7 +286,7 @@ async def websocket_actualizacion_reportes_status(websocket: WebSocket):
                     break
 
                 status_key = "ActualizarTablasReportesCronjob_status"
-                client = redis_client_manager.get_client()
+                client = redis_manager.get_client()
                 status_bytes = await client.get(status_key)
                 status_value_str = (
                     status_bytes.decode("utf-8") if status_bytes is not None else None
@@ -345,7 +345,7 @@ async def websocket_actualizacion_reportes_status(websocket: WebSocket):
 
 @router.get("/download/{job_id}", response_class=StreamingResponse)
 async def download_job_result(job_id: str):
-    client = redis_client_manager.get_client()
+    client = redis_manager.get_client()
     try:
         # ZIP
         if data := await client.get(f"job:{job_id}:zip"):
@@ -420,13 +420,13 @@ async def websocket_utilidades(
             if websocket.client_state == WebSocketState.CONNECTED:
                 try:
                     # Obtener trabajos tipados
-                    jobs: list[Job] = await redis_client_manager.get_all_jobs(
+                    jobs: list[Job] = await redis_manager.get_all_jobs(
                         search=search, page=page, page_size=page_size
                     )
 
                     # Añadir TTL a cada trabajo
                     for job in jobs:
-                        ttl = await redis_client_manager.get_client().ttl(
+                        ttl = await redis_manager.get_client().ttl(
                             f"job:{job.job_id}:status"
                         )
                         job.expires_in = ttl if ttl > 0 else None

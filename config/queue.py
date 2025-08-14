@@ -1,5 +1,5 @@
 from rq import Queue
-from config.redis import redis_client_manager
+from config.redis import redis_manager
 from config.logger import logger
 from typing import Callable
 import asyncio
@@ -20,7 +20,7 @@ class QueueManager:
             queue_name: Nombre de la cola (útil para separar por prioridad o tipo)
         """
         # Obtener la conexión Redis síncrona (importante para RQ)
-        redis_conn = redis_client_manager.get_sync_client()
+        redis_conn = redis_manager.get_sync_client()
         self.queue = Queue(queue_name, connection=redis_conn)
 
     def enqueue(self, func: Callable, *args, **kwargs) -> str:

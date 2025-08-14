@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse, ORJSONResponse
 from fastapi import HTTPException
 from config.logger import logger
 import traceback
-from config.redis import redis_client_manager  # Ensure this is the correct import path
+from config.redis import redis_manager  # Ensure this is the correct import path
 
 router = APIRouter()
 
