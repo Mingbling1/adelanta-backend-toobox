@@ -1,3 +1,6 @@
+import asyncio
+import weakref
+from contextlib import suppress
 from config.db_mysql import DatabaseSessionManager
 from config.settings import settings
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
@@ -16,35 +19,77 @@ from repositories.datamart.CXCDevFactRepository import CXCDevFactRepository
 from config.logger import logger
 
 
+# 🛠️ Registry global para cleanup automático
+_active_factories = weakref.WeakSet()
+
+
 class RepositoryFactory:
     """
     Factory para crear repositories con sesiones aisladas
     Cada task de Celery obtiene sus propias instancias
+    🚀 MEJORADO: Configuración específica para evitar event loop warnings
     """
 
     def __init__(self):
-        # Crear session manager con configuración optimizada para Celery con más recursos
+        # Registrar para cleanup automático
+        _active_factories.add(self)
+
+        # 🛡️ CONFIGURACIÓN OPTIMIZADA PARA CELERY + ASYNC
+        # Parámetros ajustados para evitar conexiones huérfanas
         self.session_manager = DatabaseSessionManager(
             host=str(settings.DATABASE_MYSQL_URL),
             engine_kwargs={
                 "echo": False,  # Sin logging detallado en tasks
                 "future": True,
-                "pool_size": 8,  # Pool más grande para múltiples workers
-                "max_overflow": 4,  # Overflow aumentado
-                "pool_recycle": 1800,  # Reciclar conexiones cada 30 min
+                # 🔧 POOL REDUCIDO: Menos conexiones = menos problemas de cleanup
+                "pool_size": 3,  # REDUCIDO de 8 a 3 para mejor control
+                "max_overflow": 1,  # REDUCIDO de 4 a 1 para evitar saturación
+                # 🕐 TIEMPOS AGRESIVOS: Reciclar conexiones frecuentemente
+                "pool_recycle": 600,  # REDUCIDO: 10 min en lugar de 30 min
+                "pool_timeout": 20,  # Timeout rápido para obtener conexión
                 "pool_pre_ping": True,  # Verificar conexiones antes de usar
+                # 🚨 CONFIGURACIÓN ESPECÍFICA PARA ASYNC + CELERY
+                "pool_reset_on_return": "commit",  # Reset estado al devolver conexión
+                "pool_invalidate_on_disconnect": True,  # Invalidar en desconexión
                 "connect_args": {
-                    "connect_timeout": 10,  # Timeout aumentado
+                    "connect_timeout": 8,  # REDUCIDO: Timeout más agresivo
                     "charset": "utf8mb4",
+                    "autocommit": False,
+                    # 🛡️ CONFIGURACIONES TCP PARA ESTABILIDAD
+                    "read_timeout": 30,
+                    "write_timeout": 30,
+                    # Configuración específica para aiomysql en Celery
+                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
                 },
             },
         )
         self._session = None
+        self._closed = False
+        logger.info("🏭 RepositoryFactory creado con configuración Celery-optimizada")
 
     async def get_db_session(self):
-        """Obtener sesión de base de datos reutilizable"""
+        """
+        Obtener sesión de base de datos reutilizable
+        🛡️ MEJORADO: Verificación de estado y manejo de errores robusto
+        """
+        if self._closed:
+            raise RuntimeError(
+                "RepositoryFactory ya está cerrado - no se pueden crear más sesiones"
+            )
+
         if self._session is None:
-            self._session = self.session_manager._sessionmaker()
+            try:
+                # Verificar que el session manager esté disponible
+                if self.session_manager._engine is None:
+                    raise RuntimeError("DatabaseSessionManager no está inicializado")
+
+                self._session = self.session_manager._sessionmaker()
+                logger.debug("📁 Nueva sesión de BD creada exitosamente")
+
+            except Exception as e:
+                logger.error(f"❌ Error crítico creando sesión de BD: {e}")
+                raise RuntimeError(f"No se pudo crear sesión de BD: {e}") from e
+
         return self._session
 
     async def create_tipo_cambio_repository(self) -> TipoCambioRepository:
@@ -97,20 +142,99 @@ class RepositoryFactory:
         return CXCDevFactRepository(db=db_session)
 
     async def cleanup(self):
-        """Limpiar recursos del factory de forma segura"""
-        try:
-            # Cerrar sesión activa primero
-            if self._session is not None:
-                await self._session.close()
-                self._session = None
+        """
+        🛡️ MEJORADO: Limpiar recursos del factory de forma ultra-segura
+        Maneja específicamente el caso de event loop cerrado en Celery
+        """
+        if self._closed:
+            logger.debug("RepositoryFactory ya está cerrado, saltando cleanup")
+            return  # Ya limpiado
 
-            # Cerrar session manager
-            await self.session_manager.close()
+        logger.info("🧹 Iniciando cleanup robusto de RepositoryFactory...")
+
+        try:
+            # 1. 🔒 Marcar como cerrado inmediatamente para evitar uso concurrente
+            self._closed = True
+
+            # 2. 🗂️ Cerrar sesión activa de forma segura
+            if self._session is not None:
+                try:
+                    # Verificar si hay un event loop activo
+                    try:
+                        loop = asyncio.get_running_loop()
+                        if loop.is_closed():
+                            logger.warning(
+                                "⚠️ Event loop cerrado, usando cleanup directo de sesión"
+                            )
+                            # Si el loop está cerrado, intentar cierre directo sin await
+                            with suppress(Exception):
+                                if (
+                                    hasattr(self._session, "_connection")
+                                    and self._session._connection
+                                ):
+                                    self._session._connection.close()
+                        else:
+                            # Event loop activo, cierre normal
+                            await self._session.close()
+                            logger.debug("✅ Sesión de BD cerrada correctamente")
+                    except RuntimeError as e:
+                        if "no running event loop" in str(e).lower():
+                            logger.debug(
+                                "🔄 No hay event loop activo, saltando cierre async de sesión"
+                            )
+                        else:
+                            raise  # Re-lanzar si es otro tipo de RuntimeError
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Error cerrando sesión de BD: {e}")
+                finally:
+                    self._session = None
+
+            # 3. 🏭 Cerrar session manager de forma segura
+            if hasattr(self, "session_manager") and self.session_manager:
+                try:
+                    # Verificar si hay un event loop activo
+                    try:
+                        loop = asyncio.get_running_loop()
+                        if loop.is_closed():
+                            logger.warning(
+                                "⚠️ Event loop cerrado, saltando cleanup de session manager"
+                            )
+                        else:
+                            await self.session_manager.close()
+                            logger.debug("✅ Session manager cerrado correctamente")
+                    except RuntimeError as e:
+                        if "no running event loop" in str(e).lower():
+                            logger.debug(
+                                "🔄 No hay event loop activo, saltando cierre async de session manager"
+                            )
+                        else:
+                            raise  # Re-lanzar si es otro tipo de RuntimeError
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Error cerrando session manager: {e}")
 
         except Exception as e:
-            logger.warning(f"Error cerrando repository factory: {e}")
+            logger.error(f"❌ Error crítico durante cleanup: {e}")
         finally:
-            await self.session_manager.close()
+            logger.info("✅ RepositoryFactory cleanup completado")
+
+    def __del__(self):
+        """
+        🛡️ Destructor seguro: Previene warnings en garbage collection
+        NO realiza operaciones async aquí para evitar problemas con event loop cerrado
+        """
+        if not self._closed and hasattr(self, "_session") and self._session is not None:
+            logger.warning(
+                "⚠️ RepositoryFactory no se cerró explícitamente antes de destructor"
+            )
+            # Intentar cleanup síncrono básico sin await
+            with suppress(Exception):
+                if hasattr(self._session, "_connection") and self._session._connection:
+                    # Cierre directo de la conexión sin async
+                    self._session._connection.close()
+                self._session = None
+            self._closed = True
 
 
 def create_repository_factory() -> RepositoryFactory:
@@ -119,3 +243,26 @@ def create_repository_factory() -> RepositoryFactory:
     Esto evita problemas de estado compartido en Celery
     """
     return RepositoryFactory()
+
+
+async def cleanup_all_factories():
+    """
+    🧹 Cleanup global de todos los factories activos
+    Útil para shutdown graceful de la aplicación Celery
+    """
+    factories = list(_active_factories)
+    logger.info(f"🧹 Cleanup global iniciado: {len(factories)} factories activos")
+
+    cleanup_errors = []
+    for i, factory in enumerate(factories, 1):
+        try:
+            logger.debug(f"🔄 Cleaning factory {i}/{len(factories)}")
+            await factory.cleanup()
+        except Exception as e:
+            cleanup_errors.append(str(e))
+            logger.warning(f"⚠️ Error en cleanup global de factory {i}: {e}")
+
+    if cleanup_errors:
+        logger.warning(f"⚠️ {len(cleanup_errors)} errores durante cleanup global")
+    else:
+        logger.info("✅ Cleanup global completado sin errores")
