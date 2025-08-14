@@ -116,7 +116,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
 
         logger.info(f"💾 Insertando {len(kpi_calcular)} registros KPI...")
 
-        await kpi_repo.delete_and_bulk_insert_chunked(kpi_calcular, chunk_size=2000)
+        await kpi_repo.delete_and_bulk_insert_chunked(kpi_calcular, chunk_size=5000)
 
         logger.info("🧮 Calculando NuevosClientesNuevosPagadores...")
 
@@ -139,7 +139,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         )
 
         await nuevos_clientes_repo.delete_and_bulk_insert_chunked(
-            nuevos_clientes_nuevos_pagadores_calcular, chunk_size=2000
+            nuevos_clientes_nuevos_pagadores_calcular, chunk_size=5000
         )
 
         logger.info("🧮 Calculando Saldos...")
@@ -150,7 +150,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         logger.info(f"💾 Insertando {len(saldos_calcular)} registros Saldos...")
 
         await saldos_repo.delete_and_bulk_insert_chunked(
-            saldos_calcular, chunk_size=2000
+            saldos_calcular, chunk_size=5000
         )
 
         # Obtenemos el timestamp
@@ -200,11 +200,3 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         logger.error(f"❌ Error en lógica Tablas Reportes: {str(e)}")
         raise e
 
-    finally:
-        # Limpiar recursos del factory de forma robusta
-        try:
-            logger.info("🧹 Limpiando recursos...")
-            await repo_factory.cleanup()
-            logger.info("✅ Recursos limpiados")
-        except Exception as cleanup_error:
-            logger.error(f"⚠️ Error limpiando recursos: {cleanup_error}")

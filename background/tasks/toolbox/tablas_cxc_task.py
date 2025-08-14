@@ -200,12 +200,4 @@ async def _actualizar_tablas_cxc_logic() -> Dict[str, Any]:
         logger.error(f"❌ Error en lógica Tablas CXC: {str(e)}")
         raise e
 
-    finally:
-        # Limpiar recursos del factory de forma robusta
-        try:
-            logger.info("🧹 Limpiando recursos...")
-            await repo_factory.cleanup()
-            gc.collect()
-            logger.info("✅ Recursos limpiados")
-        except Exception as cleanup_error:
-            logger.error(f"⚠️ Error limpiando recursos: {cleanup_error}")
+

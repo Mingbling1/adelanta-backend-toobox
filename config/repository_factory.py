@@ -13,6 +13,7 @@ from repositories.datamart.ActualizacionReportesRepository import (
 from repositories.datamart.CXCAcumuladoDIMRepository import CXCAcumuladoDIMRepository
 from repositories.datamart.CXCPagosFactRepository import CXCPagosFactRepository
 from repositories.datamart.CXCDevFactRepository import CXCDevFactRepository
+from config.logger import logger
 
 
 class RepositoryFactory:
@@ -40,81 +41,81 @@ class RepositoryFactory:
                 },
             },
         )
-        self._session = None
 
     async def get_db_session(self):
-        """Obtener sesión de base de datos reutilizable"""
-        if self._session is None:
-            self._session = self.session_manager._sessionmaker()
-        return self._session
+        """
+        🔄 Generador de sesiones con auto-cleanup (MEJOR PRÁCTICA)
+        Cada sesión se cierra automáticamente después del uso
+        """
+        async with self.session_manager.session() as session:
+            yield session
+
 
     async def create_tipo_cambio_repository(self) -> TipoCambioRepository:
         """Crear repository de TipoCambio"""
-        db_session = await self.get_db_session()
-        return TipoCambioRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return TipoCambioRepository(db=db_session)
 
     async def create_kpi_acumulado_repository(self) -> KPIAcumuladoRepository:
         """Crear repository de KPI Acumulado"""
-        db_session = await self.get_db_session()
-        return KPIAcumuladoRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return KPIAcumuladoRepository(db=db_session)
 
     async def create_kpi_repository(self) -> KPIRepository:
         """Crear repository de KPI"""
-        db_session = await self.get_db_session()
-        return KPIRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return KPIRepository(db=db_session)
 
     async def create_saldos_repository(self) -> SaldosRepository:
         """Crear repository de Saldos"""
-        db_session = await self.get_db_session()
-        return SaldosRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return SaldosRepository(db=db_session)
 
     async def create_nuevos_clientes_nuevos_pagadores_repository(
         self,
     ) -> NuevosClientesNuevosPagadoresRepository:
         """Crear repository de NuevosClientesNuevosPagadores"""
-        db_session = await self.get_db_session()
-        return NuevosClientesNuevosPagadoresRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return NuevosClientesNuevosPagadoresRepository(db=db_session)
 
     async def create_actualizacion_reportes_repository(
         self,
     ) -> ActualizacionReportesRepository:
         """Crear repository de ActualizacionReportes"""
-        db_session = await self.get_db_session()
-        return ActualizacionReportesRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return ActualizacionReportesRepository(db=db_session)
 
     async def create_cxc_acumulado_dim_repository(self) -> CXCAcumuladoDIMRepository:
         """Crear repository de CXCAcumuladoDIM"""
-        db_session = await self.get_db_session()
-        return CXCAcumuladoDIMRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return CXCAcumuladoDIMRepository(db=db_session)
 
     async def create_cxc_pagos_fact_repository(self) -> CXCPagosFactRepository:
         """Crear repository de CXCPagosFact"""
-        db_session = await self.get_db_session()
-        return CXCPagosFactRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return CXCPagosFactRepository(db=db_session)
 
     async def create_cxc_dev_fact_repository(self) -> CXCDevFactRepository:
         """Crear repository de CXCDevFact"""
-        db_session = await self.get_db_session()
-        return CXCDevFactRepository(db=db_session)
+        async for db_session in self.get_db_session():
+            return CXCDevFactRepository(db=db_session)
 
     async def cleanup(self):
         """Limpiar recursos del factory de forma segura"""
         try:
-            # Cerrar sesión activa primero
-            if self._session is not None:
-                await self._session.close()
-                self._session = None
-
-            # Cerrar session manager
+            # Con el patrón yield, las sesiones se auto-limpian
+            # Solo necesitamos cerrar el session manager
             await self.session_manager.close()
+            logger.info("✅ RepositoryFactory: Recursos limpiados exitosamente")
 
         except Exception as e:
-            from config.logger import logger
-
             logger.warning(f"Error cerrando repository factory: {e}")
         finally:
-            # Asegurar limpieza completa
-            self._session = None
+            # Asegurar que se cierre
+            try:
+                await self.session_manager.close()
+            except Exception:
+                pass
 
 
 def create_repository_factory() -> RepositoryFactory:

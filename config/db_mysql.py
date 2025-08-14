@@ -56,7 +56,7 @@ class DatabaseSessionManager:
             raise
         finally:
             await session.close()
-            await self._engine.dispose()
+
 
 
 sessionmanager = DatabaseSessionManager(
