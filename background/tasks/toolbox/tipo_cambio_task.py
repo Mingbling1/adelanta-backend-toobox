@@ -145,12 +145,7 @@ async def _execute_tipo_cambio_update(
     except Exception as e:
         logger.error(f"❌ Error en _execute_tipo_cambio_update: {str(e)}")
         raise
-    finally:
-        # 🧹 Cleanup del repository factory
-        try:
-            await repository_factory.cleanup()
-        except Exception as cleanup_error:
-            logger.warning(f"⚠️ Error en cleanup: {cleanup_error}")
+
 
 
 async def _process_batch(
