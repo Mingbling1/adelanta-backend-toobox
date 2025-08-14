@@ -23,7 +23,7 @@ from toolbox.api.kpi_api import get_kpi
     max_retries=0,  # Sin reintentos, una sola ejecución
     default_retry_delay=60,
 )
-def tablas_reportes_task(self) -> Dict[str, Any]:
+async def tablas_reportes_task(self) -> Dict[str, Any]:
     """
     🎯 Task Celery: Actualizar Tablas Reportes (KPI, NuevosClientes, Saldos)
     Equivalente a ActualizarTablasReportesCronjob
@@ -32,7 +32,7 @@ def tablas_reportes_task(self) -> Dict[str, Any]:
         logger.info("🚀 Iniciando task: Tablas Reportes")
 
         # Ejecutar lógica async en event loop
-        result = asyncio.run(_actualizar_tablas_reportes_logic())
+        result = await _actualizar_tablas_reportes_logic()
 
         logger.info("✅ Task completada: Tablas Reportes")
         return {
@@ -190,8 +190,6 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         now = datetime.now(BaseCronjob.peru_tz)
         # 🛡️ Truncar el error para evitar "Data too long for column 'detalle'"
         error_message = str(e)
-        if len(error_message) > 1000:  # Límite conservador para columna detalle
-            error_message = error_message[:950] + "... [TRUNCADO]"
 
         await actualizacion_reportes_repo.create(
             {"ultima_actualizacion": now, "estado": "Error", "detalle": error_message}
