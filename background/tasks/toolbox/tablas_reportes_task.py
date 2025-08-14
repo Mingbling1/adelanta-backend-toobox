@@ -224,7 +224,7 @@ from toolbox.api.kpi_api import get_kpi
     max_retries=0,  # Sin reintentos, una sola ejecución
     default_retry_delay=60,
 )
-def tablas_reportes_task_sync(self) -> Dict[str, Any]:
+def tablas_reportes_task(self) -> Dict[str, Any]:
     """
     🎯 Task Celery SÍNCRONO: Actualizar Tablas Reportes (KPI, NuevosClientes, Saldos)
     Versión síncrona para casos específicos - usa RepositoryFactorySync
