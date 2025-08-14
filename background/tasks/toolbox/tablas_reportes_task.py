@@ -366,12 +366,12 @@ def _actualizar_tablas_reportes_logic_sync() -> Dict[str, Any]:
             {"status": "Active", "timestamp": now_str, "error": None}
         ).decode("utf-8")
 
-        # Redis también requiere async, usamos asyncio.run
-        async def set_redis_status():
-            client = redis_client_manager.get_client()
-            await client.set(status_key, status_value)
+        # # Redis también requiere async, usamos asyncio.run
+        # async def set_redis_status():
+        #     client = redis_client_manager.get_client()
+        #     await client.set(status_key, status_value)
 
-        asyncio.run(set_redis_status())
+        # asyncio.run(set_redis_status())
 
         logger.info("✅ Tablas Reportes SYNC completado exitosamente")
 
@@ -406,12 +406,12 @@ def _actualizar_tablas_reportes_logic_sync() -> Dict[str, Any]:
             {"status": "Error", "timestamp": now_str, "error": error_message}
         ).decode("utf-8")
 
-        # Redis con asyncio.run
-        async def set_redis_error():
-            client = redis_client_manager.get_client()
-            await client.set(status_key, status_value)
+        # # Redis con asyncio.run
+        # async def set_redis_error():
+        #     client = redis_client_manager.get_client()
+        #     await client.set(status_key, status_value)
 
-        asyncio.run(set_redis_error())
+        # asyncio.run(set_redis_error())
         logger.error(f"❌ Error en lógica SYNC Tablas Reportes: {str(e)}")
         raise e
     finally:
