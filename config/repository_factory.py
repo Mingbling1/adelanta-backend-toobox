@@ -29,15 +29,13 @@ class RepositoryFactory:
             engine_kwargs={
                 "echo": False,  # Sin logging detallado en tasks
                 "future": True,
-                "pool_size": 5,  # Pool más grande para múltiples workers
-                "max_overflow": 3,  # Overflow aumentado
+                "pool_size": 8,  # Pool más grande para múltiples workers
+                "max_overflow": 4,  # Overflow aumentado
                 "pool_recycle": 1800,  # Reciclar conexiones cada 30 min
                 "pool_pre_ping": True,  # Verificar conexiones antes de usar
-                "pool_timeout": 20,  # Timeout aumentado para evitar race conditions
                 "connect_args": {
-                    "connect_timeout": 15,  # Timeout aumentado
+                    "connect_timeout": 10,  # Timeout aumentado
                     "charset": "utf8mb4",
-                    "autocommit": False,  # Control explícito de transacciones
                 },
             },
         )
