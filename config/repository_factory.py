@@ -15,6 +15,7 @@ from repositories.datamart.CXCPagosFactRepository import CXCPagosFactRepository
 from repositories.datamart.CXCDevFactRepository import CXCDevFactRepository
 from config.logger import logger
 
+
 class RepositoryFactory:
     """
     Factory para crear repositories con sesiones aisladas
@@ -109,11 +110,8 @@ class RepositoryFactory:
             await self.session_manager.close()
 
         except Exception as e:
-
-
             logger.warning(f"Error cerrando repository factory: {e}")
         finally:
-
             await self.session_manager.close()
 
 
