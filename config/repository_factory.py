@@ -266,7 +266,6 @@ class RepositoryFactorySync:
             connect_args={
                 "connect_timeout": 8,
                 "charset": "utf8mb4",
-                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
             },
         )
 
