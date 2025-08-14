@@ -93,11 +93,13 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
 
         # Usar UNA sola sesión para toda la tarea y cerrarla al final
         async with repo_factory.session_manager.session() as db_session:
-            tipo_cambio_repo = TipoCambioRepository(db_session)
-            kpi_repo = KPIRepository(db_session)
-            nuevos_clientes_repo = NuevosClientesNuevosPagadoresRepository(db_session)
-            saldos_repo = SaldosRepository(db_session)
-            actualizacion_reportes_repo = ActualizacionReportesRepository(db_session)
+            tipo_cambio_repo = TipoCambioRepository(db=db_session)
+            kpi_repo = KPIRepository(db=db_session)
+            nuevos_clientes_repo = NuevosClientesNuevosPagadoresRepository(
+                db=db_session
+            )
+            saldos_repo = SaldosRepository(db=db_session)
+            actualizacion_reportes_repo = ActualizacionReportesRepository(db=db_session)
 
             logger.info("📊 Obteniendo datos de TipoCambio...")
 
@@ -199,7 +201,7 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
         try:
             async with repo_factory.session_manager.session() as db_session:
                 actualizacion_reportes_repo = ActualizacionReportesRepository(
-                    db_session
+                    db=db_session
                 )
                 now = datetime.now(BaseCronjob.peru_tz)
                 await actualizacion_reportes_repo.create(
