@@ -321,3 +321,33 @@ class BaseRepository(Generic[T]):
             self.db.execute(stmt)
             if autocommit:
                 self.db.commit()
+
+    def create_sync(self, entity_data, autocommit: bool = True) -> T:
+        """
+        Versión síncrona de create.
+        Crea un nuevo registro usando la sesión síncrona (self.db).
+        """
+        entity = self.entity_class(**entity_data)
+        self.db.add(entity)
+        try:
+            self.db.flush()  # Enviamos los cambios a la base de datos
+            self.db.refresh(entity)
+            if autocommit:
+                self.db.commit()
+            return entity
+        except IntegrityError as e:
+            if autocommit:
+                self.db.rollback()
+            logger.error(f"Error en create_sync: {str(e)}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error: {str(e.orig)}",
+            )
+        except Exception as e:
+            if autocommit:
+                self.db.rollback()
+            logger.error(f"Error inesperado en create_sync: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error inesperado: {str(e)}",
+            )

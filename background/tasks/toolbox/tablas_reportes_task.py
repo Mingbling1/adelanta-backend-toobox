@@ -356,12 +356,8 @@ def _actualizar_tablas_reportes_logic_sync() -> Dict[str, Any]:
         # Obtenemos el timestamp
         now = datetime.now(BaseCronjob.peru_tz)
 
-        # Actualizamos en la base de datos - método síncrono (necesitaría implementarse)
-        # Por ahora usamos asyncio.run para el create
-        asyncio.run(
-            actualizacion_reportes_repo.create(
-                {"ultima_actualizacion": now, "estado": "Success", "detalle": None}
-            )
+        actualizacion_reportes_repo.create_sync(
+            {"ultima_actualizacion": now, "estado": "Success", "detalle": None}
         )
 
         # Si todo se ejecuta sin errores, se guarda en Redis el status Active con la hora actual
@@ -396,21 +392,14 @@ def _actualizar_tablas_reportes_logic_sync() -> Dict[str, Any]:
 
     except Exception as e:
         now = datetime.now(BaseCronjob.peru_tz)
-        # 🛡️ Truncar el error para evitar "Data too long for column 'detalle'"
         error_message = str(e)
-        if len(error_message) > 1000:  # Límite conservador para columna detalle
-            error_message = error_message[:950] + "... [TRUNCADO]"
-
-        # Usar asyncio.run para el método async create
-        asyncio.run(
-            actualizacion_reportes_repo.create(
-                {
-                    "ultima_actualizacion": now,
-                    "estado": "Error",
-                    "detalle": error_message,
-                }
+        actualizacion_reportes_repo.create_sync(
+            {
+                "ultima_actualizacion": now,
+                "estado": "Error",
+                "detalle": error_message,
+            }
             )
-        )
 
         now_str = now.isoformat()
         status_value = orjson.dumps(
