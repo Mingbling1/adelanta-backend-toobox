@@ -188,15 +188,26 @@ async def _actualizar_tablas_reportes_logic() -> Dict[str, Any]:
 
     except Exception as e:
         now = datetime.now(BaseCronjob.peru_tz)
+        # 🛡️ Truncar el error para evitar "Data too long for column 'detalle'"
+        error_message = str(e)
+        if len(error_message) > 1000:  # Límite conservador para columna detalle
+            error_message = error_message[:950] + "... [TRUNCADO]"
+
         await actualizacion_reportes_repo.create(
-            {"ultima_actualizacion": now, "estado": "Error", "detalle": str(e)}
+            {"ultima_actualizacion": now, "estado": "Error", "detalle": error_message}
         )
         now_str = now.isoformat()
         status_value = orjson.dumps(
-            {"status": "Error", "timestamp": now_str, "error": str(e)}
+            {"status": "Error", "timestamp": now_str, "error": error_message}
         ).decode("utf-8")
         client = redis_client_manager.get_client()
         await client.set(status_key, status_value)
         logger.error(f"❌ Error en lógica Tablas Reportes: {str(e)}")
         raise e
-
+    finally:
+        # 🧹 CLEANUP OBLIGATORIO: Cerrar factory para evitar event loop warnings
+        try:
+            await repo_factory.cleanup()
+            logger.debug("✅ RepositoryFactory cleanup completado")
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Error durante cleanup: {cleanup_error}")

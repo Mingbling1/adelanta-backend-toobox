@@ -44,7 +44,6 @@ class RepositoryFactory:
                 # 🔧 POOL REDUCIDO: Menos conexiones = menos problemas de cleanup
                 "pool_size": 3,  # REDUCIDO de 8 a 3 para mejor control
                 "max_overflow": 1,  # REDUCIDO de 4 a 1 para evitar saturación
-                # 🕐 TIEMPOS AGRESIVOS: Reciclar conexiones frecuentemente
                 "pool_recycle": 600,  # REDUCIDO: 10 min en lugar de 30 min
                 "pool_timeout": 20,  # Timeout rápido para obtener conexión
                 "pool_pre_ping": True,  # Verificar conexiones antes de usar
@@ -53,8 +52,6 @@ class RepositoryFactory:
                 "connect_args": {
                     "connect_timeout": 8,  # REDUCIDO: Timeout más agresivo
                     "charset": "utf8mb4",
-                    "autocommit": False,
-                    # Configuración específica para aiomysql en Celery
                     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
                 },
             },
