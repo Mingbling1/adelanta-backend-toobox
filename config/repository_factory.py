@@ -50,14 +50,10 @@ class RepositoryFactory:
                 "pool_pre_ping": True,  # Verificar conexiones antes de usar
                 # 🚨 CONFIGURACIÓN ESPECÍFICA PARA ASYNC + CELERY
                 "pool_reset_on_return": "commit",  # Reset estado al devolver conexión
-                "pool_invalidate_on_disconnect": True,  # Invalidar en desconexión
                 "connect_args": {
                     "connect_timeout": 8,  # REDUCIDO: Timeout más agresivo
                     "charset": "utf8mb4",
                     "autocommit": False,
-                    # 🛡️ CONFIGURACIONES TCP PARA ESTABILIDAD
-                    "read_timeout": 30,
-                    "write_timeout": 30,
                     # Configuración específica para aiomysql en Celery
                     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
                 },
