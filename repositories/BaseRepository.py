@@ -4,6 +4,7 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, OperationalError
 from fastapi import HTTPException
 from typing import TypeVar, Generic, List, Union, Type, Dict, Any
@@ -14,7 +15,7 @@ T = TypeVar("T")  # Tipo para los modelos
 
 
 class BaseRepository(Generic[T]):
-    def __init__(self, entity_class: Type[T], db: AsyncSession) -> None:
+    def __init__(self, entity_class: Type[T], db: Union[AsyncSession, Session]) -> None:
         self.entity_class = entity_class
         self.db = db
 
@@ -260,3 +261,63 @@ class BaseRepository(Generic[T]):
             chunk_size=chunk_size,
             autocommit=autocommit,
         )
+
+    # 🔧 MÉTODOS SÍNCRONOS - Réplicas de los métodos async
+
+    def get_all_dicts_sync(self, exclude_pk: bool = True) -> list[dict]:
+        """
+        Versión síncrona de get_all_dicts.
+        Devuelve todos los registros como lista de dicts,
+        respetando el orden de columnas en el modelo.
+        Si exclude_pk=True, omite las columnas que son primary_key.
+        """
+        # Extraemos nombres de columnas según el modelo
+        cols = [
+            col.name
+            for col in self.entity_class.__table__.columns
+            if not (exclude_pk and col.primary_key)
+        ]
+        # Construimos el SELECT genérico
+        stmt = sa.select(*[getattr(self.entity_class, c) for c in cols])
+        result = self.db.execute(stmt)
+        # Cada row._mapping es un dict {col: valor}
+        return [dict(row._mapping) for row in result]
+
+    def delete_all_sync(self, autocommit: bool = True):
+        """
+        Versión síncrona de delete_all.
+        Elimina todos los registros de la tabla.
+        """
+        try:
+            statement = delete(self.entity_class)
+            self.db.execute(statement)
+            if autocommit:
+                self.db.commit()
+        except Exception as e:
+            if autocommit:
+                self.db.rollback()
+            logger.error(f"Error en delete_all_sync: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al eliminar todos los registros: {str(e)}",
+            )
+
+    def bulk_insert_chunked_sync(
+        self,
+        records: List[Dict[str, Any]],
+        chunk_size: int = 1000,
+        autocommit: bool = True,
+    ) -> None:
+        """
+        Versión síncrona de bulk_insert_chunked.
+        Inserta en chunks secuenciales usando la misma sesión sync (self.db).
+        """
+        total = len(records)
+        logger.warning(f"Total de registros a insertar (sync): {total}")
+
+        for start in range(0, total, chunk_size):
+            chunk = records[start : start + chunk_size]
+            stmt = insert(self.entity_class).values(chunk)
+            self.db.execute(stmt)
+            if autocommit:
+                self.db.commit()

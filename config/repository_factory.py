@@ -1,6 +1,8 @@
 import asyncio
 import weakref
 from contextlib import suppress
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 from config.db_mysql import DatabaseSessionManager
 from config.settings import settings
 from repositories.datamart.TipoCambioRepository import TipoCambioRepository
@@ -233,24 +235,174 @@ def create_repository_factory() -> RepositoryFactory:
     return RepositoryFactory()
 
 
-async def cleanup_all_factories():
-    """
-    🧹 Cleanup global de todos los factories activos
-    Útil para shutdown graceful de la aplicación Celery
-    """
-    factories = list(_active_factories)
-    logger.info(f"🧹 Cleanup global iniciado: {len(factories)} factories activos")
+# 🛠️ Registry global para cleanup automático (sync)
+_active_sync_factories = weakref.WeakSet()
 
-    cleanup_errors = []
-    for i, factory in enumerate(factories, 1):
+
+class RepositoryFactorySync:
+    """
+    Factory SÍNCRONO para crear repositories con sesiones aisladas
+    Réplica síncrona de RepositoryFactory para casos específicos
+    """
+
+    def __init__(self):
+        # Registrar para cleanup automático
+        _active_sync_factories.add(self)
+
+        # 🛡️ CONFIGURACIÓN SÍNCRONA - URL sin aiomysql
+        sync_url = str(settings.DATABASE_MYSQL_URL).replace(
+            "mysql+aiomysql://", "mysql+pymysql://"
+        )
+
+        # Motor síncrono con configuración optimizada
+        self._engine = create_engine(
+            sync_url,
+            echo=False,
+            pool_size=3,
+            max_overflow=1,
+            pool_recycle=600,
+            pool_pre_ping=True,
+            pool_reset_on_return="commit",
+            connect_args={
+                "connect_timeout": 8,
+                "charset": "utf8mb4",
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        )
+
+        # Session maker síncrono
+        self._sessionmaker = sessionmaker(
+            autocommit=False, autoflush=False, bind=self._engine
+        )
+
+        self._session = None
+        self._closed = False
+        logger.info("🏭 RepositoryFactorySync creado con configuración síncrona")
+
+    def get_db_session(self) -> Session:
+        """
+        Obtener sesión de base de datos síncrona reutilizable
+        """
+        if self._closed:
+            raise RuntimeError(
+                "RepositoryFactorySync ya está cerrado - no se pueden crear más sesiones"
+            )
+
+        if self._session is None:
+            try:
+                self._session = self._sessionmaker()
+                logger.debug("📁 Nueva sesión síncrona de BD creada exitosamente")
+            except Exception as e:
+                logger.error(f"❌ Error crítico creando sesión síncrona de BD: {e}")
+                raise RuntimeError(
+                    f"No se pudo crear sesión síncrona de BD: {e}"
+                ) from e
+
+        return self._session
+
+    def create_tipo_cambio_repository(self) -> TipoCambioRepository:
+        """Crear repository de TipoCambio (síncrono)"""
+        db_session = self.get_db_session()
+        return TipoCambioRepository(db=db_session)
+
+    def create_kpi_acumulado_repository(self) -> KPIAcumuladoRepository:
+        """Crear repository de KPI Acumulado (síncrono)"""
+        db_session = self.get_db_session()
+        return KPIAcumuladoRepository(db=db_session)
+
+    def create_kpi_repository(self) -> KPIRepository:
+        """Crear repository de KPI (síncrono)"""
+        db_session = self.get_db_session()
+        return KPIRepository(db=db_session)
+
+    def create_saldos_repository(self) -> SaldosRepository:
+        """Crear repository de Saldos (síncrono)"""
+        db_session = self.get_db_session()
+        return SaldosRepository(db=db_session)
+
+    def create_nuevos_clientes_nuevos_pagadores_repository(
+        self,
+    ) -> NuevosClientesNuevosPagadoresRepository:
+        """Crear repository de NuevosClientesNuevosPagadores (síncrono)"""
+        db_session = self.get_db_session()
+        return NuevosClientesNuevosPagadoresRepository(db=db_session)
+
+    def create_actualizacion_reportes_repository(
+        self,
+    ) -> ActualizacionReportesRepository:
+        """Crear repository de ActualizacionReportes (síncrono)"""
+        db_session = self.get_db_session()
+        return ActualizacionReportesRepository(db=db_session)
+
+    def create_cxc_acumulado_dim_repository(self) -> CXCAcumuladoDIMRepository:
+        """Crear repository de CXCAcumuladoDIM (síncrono)"""
+        db_session = self.get_db_session()
+        return CXCAcumuladoDIMRepository(db=db_session)
+
+    def create_cxc_pagos_fact_repository(self) -> CXCPagosFactRepository:
+        """Crear repository de CXCPagosFactRepository (síncrono)"""
+        db_session = self.get_db_session()
+        return CXCPagosFactRepository(db=db_session)
+
+    def create_cxc_dev_fact_repository(self) -> CXCDevFactRepository:
+        """Crear repository de CXCDevFactRepository (síncrono)"""
+        db_session = self.get_db_session()
+        return CXCDevFactRepository(db=db_session)
+
+    def cleanup(self):
+        """
+        Cleanup síncrono de recursos
+        Cierra sesión y motor de BD de forma segura
+        """
+        if self._closed:
+            logger.debug("🔄 RepositoryFactorySync ya estaba cerrado")
+            return
+
+        logger.info("🧹 Iniciando cleanup de RepositoryFactorySync...")
+
         try:
-            logger.debug(f"🔄 Cleaning factory {i}/{len(factories)}")
-            await factory.cleanup()
-        except Exception as e:
-            cleanup_errors.append(str(e))
-            logger.warning(f"⚠️ Error en cleanup global de factory {i}: {e}")
+            # 1. 📁 Cerrar sesión síncrona
+            if hasattr(self, "_session") and self._session is not None:
+                try:
+                    self._session.close()
+                    logger.debug("✅ Sesión síncrona de BD cerrada correctamente")
+                except Exception as e:
+                    logger.warning(f"⚠️ Error cerrando sesión síncrona de BD: {e}")
+                finally:
+                    self._session = None
 
-    if cleanup_errors:
-        logger.warning(f"⚠️ {len(cleanup_errors)} errores durante cleanup global")
-    else:
-        logger.info("✅ Cleanup global completado sin errores")
+            # 2. 🏭 Cerrar motor síncrono
+            if hasattr(self, "_engine") and self._engine:
+                try:
+                    self._engine.dispose()
+                    logger.debug("✅ Motor síncrono de BD cerrado correctamente")
+                except Exception as e:
+                    logger.warning(f"⚠️ Error cerrando motor síncrono de BD: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ Error crítico durante cleanup síncrono: {e}")
+        finally:
+            self._closed = True
+            logger.info("✅ RepositoryFactorySync cleanup completado")
+
+    def __del__(self):
+        """
+        Destructor seguro para cleanup síncrono
+        """
+        if not self._closed and hasattr(self, "_session") and self._session is not None:
+            logger.warning(
+                "⚠️ RepositoryFactorySync no se cerró explícitamente antes de destructor"
+            )
+            with suppress(Exception):
+                if self._session:
+                    self._session.close()
+                self._session = None
+            self._closed = True
+
+
+def create_repository_factory_sync() -> RepositoryFactorySync:
+    """
+    Crear una nueva instancia de RepositoryFactorySync
+    Para casos que requieren conexión síncrona a BD
+    """
+    return RepositoryFactorySync()
